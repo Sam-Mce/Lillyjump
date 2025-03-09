@@ -708,6 +708,7 @@ function updateLeaderboardDisplay(leaderboard) {
 
 async function submitScore(name, score) {
     try {
+        console.log('Attempting to submit score:', { name, score });
         const response = await fetch('/api/score', {
             method: 'POST',
             headers: {
@@ -716,13 +717,23 @@ async function submitScore(name, score) {
             body: JSON.stringify({ name, score })
         });
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+        
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Failed to parse response as JSON:', e);
+            throw new Error(`Invalid response format: ${responseText}`);
         }
         
-        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}, message: ${result.error || responseText}`);
+        }
+        
         if (!result.success) {
-            throw new Error('Server returned unsuccessful response');
+            throw new Error('Server returned unsuccessful response: ' + (result.error || 'Unknown error'));
         }
         
         console.log('Score submitted successfully:', result);
@@ -763,8 +774,11 @@ function gameOver() {
                 nameInput.value = '';
                 alert('Score submitted successfully!');
             } else {
-                alert('Failed to submit score. Please try again.');
+                alert('Failed to submit score. Please check the console for details and try again.');
             }
+        } catch (error) {
+            console.error('Error in score submission:', error);
+            alert('Error submitting score: ' + error.message);
         } finally {
             submitButton.disabled = false;
         }
