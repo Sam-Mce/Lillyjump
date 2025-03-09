@@ -38,31 +38,16 @@ function initMusic() {
     if (bgMusic) {
         bgMusic.volume = 0.3;
         bgMusic.load(); // Ensure the audio is loaded
-        const musicButton = document.getElementById('musicControl');
         
         // Add error handling for music
         bgMusic.addEventListener('error', (e) => {
             console.error('Error loading music:', e);
-            musicButton.textContent = '🎵 Music: Error';
+            updateMusicButtonState();
         });
 
         // Add loaded data handler
         bgMusic.addEventListener('loadeddata', () => {
             console.log('Music loaded successfully');
-            // Update button state based on current playback status
-            updateMusicButtonState();
-        });
-
-        // Add play handler
-        bgMusic.addEventListener('play', () => {
-            isMusicPlaying = true;
-            updateMusicButtonState();
-        });
-
-        // Add pause handler
-        bgMusic.addEventListener('pause', () => {
-            isMusicPlaying = false;
-            updateMusicButtonState();
         });
 
         // Initial button state
@@ -72,33 +57,51 @@ function initMusic() {
 
 function updateMusicButtonState() {
     const musicButton = document.getElementById('musicControl');
-    if (isMusicPlaying) {
-        musicButton.textContent = '🎵 Music: On';
-        musicButton.classList.remove('muted');
-    } else {
-        musicButton.textContent = '🎵 Music: Off';
-        musicButton.classList.add('muted');
+    if (!bgMusic) return;
+    
+    try {
+        if (bgMusic.paused) {
+            musicButton.textContent = '🎵 Music: Off';
+            musicButton.classList.add('muted');
+            isMusicPlaying = false;
+        } else {
+            musicButton.textContent = '🎵 Music: On';
+            musicButton.classList.remove('muted');
+            isMusicPlaying = true;
+        }
+    } catch (error) {
+        console.error('Error updating music button state:', error);
+        musicButton.textContent = '🎵 Music: Error';
     }
 }
 
 function toggleMusic() {
     if (!bgMusic) return;
     
-    if (!isMusicPlaying) {
-        // Try to play the music
-        const playPromise = bgMusic.play();
-        
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                console.log('Music started playing');
-            }).catch(error => {
-                console.error('Error playing music:', error);
-                isMusicPlaying = false;
-                updateMusicButtonState();
-            });
+    try {
+        if (bgMusic.paused) {
+            const playPromise = bgMusic.play();
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log('Music started playing');
+                        isMusicPlaying = true;
+                        updateMusicButtonState();
+                    })
+                    .catch(error => {
+                        console.error('Error playing music:', error);
+                        isMusicPlaying = false;
+                        updateMusicButtonState();
+                    });
+            }
+        } else {
+            bgMusic.pause();
+            isMusicPlaying = false;
+            updateMusicButtonState();
         }
-    } else {
-        bgMusic.pause();
+    } catch (error) {
+        console.error('Error toggling music:', error);
+        updateMusicButtonState();
     }
 }
 
@@ -681,6 +684,9 @@ function isOnLilypad() {
 async function fetchLeaderboard() {
     try {
         const response = await fetch('/api/leaderboard');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const leaderboard = await response.json();
         updateLeaderboardDisplay(leaderboard);
     } catch (error) {
@@ -730,6 +736,7 @@ async function submitScore() {
         if (data.success) {
             await fetchLeaderboard();
             nameInput.value = '';
+            alert('Score submitted successfully!');
         } else {
             throw new Error('Server returned unsuccessful response');
         }
