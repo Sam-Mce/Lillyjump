@@ -48,10 +48,41 @@ function initMusic() {
         // Add loaded data handler
         bgMusic.addEventListener('loadeddata', () => {
             console.log('Music loaded successfully');
+            // Try to play music when loaded
+            tryPlayMusic();
         });
+
+        // Add user interaction handler
+        document.addEventListener('click', function onFirstClick() {
+            if (!hasInteracted) {
+                hasInteracted = true;
+                tryPlayMusic();
+                // Remove the click listener after first interaction
+                document.removeEventListener('click', onFirstClick);
+            }
+        }, { once: true });
 
         // Initial button state
         updateMusicButtonState();
+    }
+}
+
+function tryPlayMusic() {
+    if (!bgMusic || !hasInteracted) return;
+    
+    const playPromise = bgMusic.play();
+    if (playPromise !== undefined) {
+        playPromise
+            .then(() => {
+                console.log('Music started playing');
+                isMusicPlaying = true;
+                updateMusicButtonState();
+            })
+            .catch(error => {
+                console.error('Error playing music:', error);
+                isMusicPlaying = false;
+                updateMusicButtonState();
+            });
     }
 }
 
@@ -80,20 +111,7 @@ function toggleMusic() {
     
     try {
         if (bgMusic.paused) {
-            const playPromise = bgMusic.play();
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        console.log('Music started playing');
-                        isMusicPlaying = true;
-                        updateMusicButtonState();
-                    })
-                    .catch(error => {
-                        console.error('Error playing music:', error);
-                        isMusicPlaying = false;
-                        updateMusicButtonState();
-                    });
-            }
+            tryPlayMusic();
         } else {
             bgMusic.pause();
             isMusicPlaying = false;
