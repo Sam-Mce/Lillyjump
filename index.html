@@ -108,10 +108,11 @@
         <div id="highScore">High Score: 0</div>
     </div>
     <button id="musicControl" onclick="toggleMusic()">
-        🎵 Music: On
+        🎵 Music: Off
     </button>
-    <audio id="bgMusic" loop>
+    <audio id="bgMusic" preload="auto" loop>
         <source src="music/lofi-background-music-2-309039.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
     </audio>
     <div id="gameOver">
         <h2>Game Over!</h2>

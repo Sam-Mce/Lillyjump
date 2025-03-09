@@ -39,8 +39,6 @@ function initMusic() {
         bgMusic.volume = 0.3;
         bgMusic.load(); // Ensure the audio is loaded
         const musicButton = document.getElementById('musicControl');
-        musicButton.textContent = '🎵 Music: Off';
-        musicButton.classList.add('muted');
         
         // Add error handling for music
         bgMusic.addEventListener('error', (e) => {
@@ -51,35 +49,56 @@ function initMusic() {
         // Add loaded data handler
         bgMusic.addEventListener('loadeddata', () => {
             console.log('Music loaded successfully');
+            // Update button state based on current playback status
+            updateMusicButtonState();
         });
+
+        // Add play handler
+        bgMusic.addEventListener('play', () => {
+            isMusicPlaying = true;
+            updateMusicButtonState();
+        });
+
+        // Add pause handler
+        bgMusic.addEventListener('pause', () => {
+            isMusicPlaying = false;
+            updateMusicButtonState();
+        });
+
+        // Initial button state
+        updateMusicButtonState();
+    }
+}
+
+function updateMusicButtonState() {
+    const musicButton = document.getElementById('musicControl');
+    if (isMusicPlaying) {
+        musicButton.textContent = '🎵 Music: On';
+        musicButton.classList.remove('muted');
+    } else {
+        musicButton.textContent = '🎵 Music: Off';
+        musicButton.classList.add('muted');
     }
 }
 
 function toggleMusic() {
     if (!bgMusic) return;
     
-    const musicButton = document.getElementById('musicControl');
     if (!isMusicPlaying) {
         // Try to play the music
         const playPromise = bgMusic.play();
         
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                isMusicPlaying = true;
-                musicButton.textContent = '🎵 Music: On';
-                musicButton.classList.remove('muted');
                 console.log('Music started playing');
             }).catch(error => {
                 console.error('Error playing music:', error);
-                musicButton.textContent = '🎵 Music: Error';
                 isMusicPlaying = false;
+                updateMusicButtonState();
             });
         }
     } else {
         bgMusic.pause();
-        isMusicPlaying = false;
-        musicButton.textContent = '🎵 Music: Off';
-        musicButton.classList.add('muted');
     }
 }
 
@@ -661,7 +680,7 @@ function isOnLilypad() {
 // Leaderboard functions
 async function fetchLeaderboard() {
     try {
-        const response = await fetch('/leaderboard');
+        const response = await fetch('/api/leaderboard');
         const leaderboard = await response.json();
         updateLeaderboardDisplay(leaderboard);
     } catch (error) {
@@ -692,11 +711,10 @@ async function submitScore() {
     submitButton.disabled = true;
     
     try {
-        const response = await fetch('/score', {
+        const response = await fetch('/api/leaderboard', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 name: name,
