@@ -1,40 +1,5 @@
-const fs = require('fs');
-const path = require('path');
-
-// Path to the leaderboard file
-const LEADERBOARD_FILE = path.join(process.cwd(), 'data', 'leaderboard.json');
-
-// Ensure the data directory exists
-if (!fs.existsSync(path.join(process.cwd(), 'data'))) {
-    fs.mkdirSync(path.join(process.cwd(), 'data'));
-}
-
-// Initialize leaderboard file if it doesn't exist
-if (!fs.existsSync(LEADERBOARD_FILE)) {
-    fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify([]));
-}
-
-// Read leaderboard from file
-function getLeaderboard() {
-    try {
-        const data = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error reading leaderboard:', error);
-        return [];
-    }
-}
-
-// Save leaderboard to file
-function saveLeaderboard(leaderboard) {
-    try {
-        fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
-        return true;
-    } catch (error) {
-        console.error('Error saving leaderboard:', error);
-        return false;
-    }
-}
+// In-memory leaderboard (for serverless environment)
+let leaderboard = [];
 
 export default function handler(req, res) {
     // Enable CORS
@@ -51,7 +16,6 @@ export default function handler(req, res) {
 
     if (req.method === 'GET') {
         try {
-            const leaderboard = getLeaderboard();
             const topScores = leaderboard
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 10);
@@ -78,18 +42,13 @@ export default function handler(req, res) {
                 date: new Date().toISOString()
             };
             
-            const leaderboard = getLeaderboard();
             leaderboard.push(newScore);
             
             // Keep only top 100 scores
             leaderboard.sort((a, b) => b.score - a.score);
-            const topScores = leaderboard.slice(0, 100);
+            leaderboard = leaderboard.slice(0, 100);
             
-            if (saveLeaderboard(topScores)) {
-                res.status(200).json({ success: true, entry: newScore });
-            } else {
-                throw new Error('Failed to save leaderboard');
-            }
+            res.status(200).json({ success: true, entry: newScore });
         } catch (error) {
             console.error('Error submitting score:', error);
             res.status(500).json({ error: 'Failed to submit score' });

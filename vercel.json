@@ -32,8 +32,9 @@
     ],
     "routes": [
         {
-            "src": "/api/(.*)",
-            "dest": "/api/$1"
+            "src": "/api/leaderboard",
+            "methods": ["GET", "POST", "OPTIONS"],
+            "dest": "/api/leaderboard.js"
         },
         {
             "src": "/(.*)",
