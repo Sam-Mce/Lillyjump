@@ -35,21 +35,46 @@ const CAMERA_DISTANCE = 10;
 // Music controls
 function initMusic() {
     bgMusic = document.getElementById('bgMusic');
-    bgMusic.volume = 0.3; // Set initial volume to 30%
-    const musicButton = document.getElementById('musicControl');
-    musicButton.textContent = '🎵 Music: Off';
-    musicButton.classList.add('muted');
+    if (bgMusic) {
+        bgMusic.volume = 0.3;
+        bgMusic.load(); // Ensure the audio is loaded
+        const musicButton = document.getElementById('musicControl');
+        musicButton.textContent = '🎵 Music: Off';
+        musicButton.classList.add('muted');
+        
+        // Add error handling for music
+        bgMusic.addEventListener('error', (e) => {
+            console.error('Error loading music:', e);
+            musicButton.textContent = '🎵 Music: Error';
+        });
+
+        // Add loaded data handler
+        bgMusic.addEventListener('loadeddata', () => {
+            console.log('Music loaded successfully');
+        });
+    }
 }
 
 function toggleMusic() {
+    if (!bgMusic) return;
+    
     const musicButton = document.getElementById('musicControl');
     if (!isMusicPlaying) {
-        bgMusic.play().catch(error => {
-            console.error('Error playing music:', error);
-        });
-        isMusicPlaying = true;
-        musicButton.textContent = '🎵 Music: On';
-        musicButton.classList.remove('muted');
+        // Try to play the music
+        const playPromise = bgMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                isMusicPlaying = true;
+                musicButton.textContent = '🎵 Music: On';
+                musicButton.classList.remove('muted');
+                console.log('Music started playing');
+            }).catch(error => {
+                console.error('Error playing music:', error);
+                musicButton.textContent = '🎵 Music: Error';
+                isMusicPlaying = false;
+            });
+        }
     } else {
         bgMusic.pause();
         isMusicPlaying = false;
@@ -571,20 +596,19 @@ function handleKeyDown(event) {
         case 'Space':
             if (!isJumping) {
                 // Start music on first jump if not already playing
-                if (!isMusicPlaying && bgMusic) {
-                    bgMusic.play().then(() => {
-                        isMusicPlaying = true;
-                        const musicButton = document.getElementById('musicControl');
-                        musicButton.textContent = '🎵 Music: On';
-                        musicButton.classList.remove('muted');
-                    }).catch(error => console.error('Error playing music:', error));
+                if (!hasInteracted) {
+                    hasInteracted = true;
+                    if (!isMusicPlaying && bgMusic) {
+                        toggleMusic();
+                    }
                 }
                 
                 isJumping = true;
                 jumpForce = JUMP_POWER;
                 // Move frog forward when jumping
                 frog.position.z += 5;
-                cameraTargetZ = frog.position.z - 10; // Update camera target smoothly
+                cameraTargetZ = frog.position.z - 10;
+                
                 // Resume movement of the previous lilypad
                 if (currentLilypad && !currentLilypad.isStationary) {
                     currentLilypad.speed = currentLilypad.originalSpeed;
@@ -637,7 +661,7 @@ function isOnLilypad() {
 // Leaderboard functions
 async function fetchLeaderboard() {
     try {
-        const response = await fetch('/api/leaderboard');
+        const response = await fetch('/leaderboard');
         const leaderboard = await response.json();
         updateLeaderboardDisplay(leaderboard);
     } catch (error) {
@@ -668,7 +692,7 @@ async function submitScore() {
     submitButton.disabled = true;
     
     try {
-        const response = await fetch('/api/leaderboard', {
+        const response = await fetch('/score', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -752,7 +776,7 @@ function restartGame() {
     lights.forEach(light => scene.add(light));
 
     // Reset game state
-    score = 47;
+    score = 0;
     isGameOver = false;
     isJumping = false;
     jumpForce = 0;
@@ -883,7 +907,7 @@ function init() {
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
 
     // Set initial score
-    score = 47;
+    score = 0;
 
     // Add clouds
     const clouds = [];
