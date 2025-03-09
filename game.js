@@ -48,16 +48,14 @@ function initMusic() {
         // Add loaded data handler
         bgMusic.addEventListener('loadeddata', () => {
             console.log('Music loaded successfully');
+            updateMusicButtonState();
         });
-
-        // Initial button state
-        updateMusicButtonState();
     }
 }
 
 function updateMusicButtonState() {
     const musicButton = document.getElementById('musicControl');
-    if (!bgMusic) return;
+    if (!bgMusic || !musicButton) return;
     
     try {
         if (bgMusic.paused) {
@@ -80,20 +78,17 @@ function toggleMusic() {
     
     try {
         if (bgMusic.paused) {
-            const playPromise = bgMusic.play();
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        console.log('Music started playing');
-                        isMusicPlaying = true;
-                        updateMusicButtonState();
-                    })
-                    .catch(error => {
-                        console.error('Error playing music:', error);
-                        isMusicPlaying = false;
-                        updateMusicButtonState();
-                    });
-            }
+            bgMusic.play()
+                .then(() => {
+                    console.log('Music started playing');
+                    isMusicPlaying = true;
+                    updateMusicButtonState();
+                })
+                .catch(error => {
+                    console.error('Error playing music:', error);
+                    isMusicPlaying = false;
+                    updateMusicButtonState();
+                });
         } else {
             bgMusic.pause();
             isMusicPlaying = false;
@@ -621,7 +616,14 @@ function handleKeyDown(event) {
                 if (!hasInteracted) {
                     hasInteracted = true;
                     if (!isMusicPlaying && bgMusic) {
-                        toggleMusic();
+                        bgMusic.play()
+                            .then(() => {
+                                isMusicPlaying = true;
+                                updateMusicButtonState();
+                            })
+                            .catch(error => {
+                                console.error('Error playing music:', error);
+                            });
                     }
                 }
                 
