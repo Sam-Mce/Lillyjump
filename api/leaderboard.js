@@ -17,9 +17,12 @@ export default async function handler(req, res) {
 
     if (path === '/api/leaderboard' && req.method === 'GET') {
         try {
-            const topScores = leaderboard
+            // Sort scores in descending order and get top 10
+            const topScores = [...leaderboard]
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 10);
+            
+            console.log('Returning leaderboard scores:', topScores);
             return res.status(200).json(topScores);
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
@@ -42,18 +45,28 @@ export default async function handler(req, res) {
             const newScore = {
                 name: name.trim(),
                 score: Math.floor(score), // Ensure integer score
-                date: new Date()
+                date: new Date().toISOString()
             };
             
+            // Add new score
             leaderboard.push(newScore);
             
-            // Keep only top 100 scores to manage memory
-            if (leaderboard.length > 100) {
-                leaderboard.sort((a, b) => b.score - a.score);
-                leaderboard = leaderboard.slice(0, 100);
-            }
+            // Sort scores in descending order and keep top 100
+            leaderboard = leaderboard
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 100);
             
-            return res.status(200).json({ success: true, entry: newScore });
+            console.log('Added new score:', newScore);
+            console.log('Current leaderboard length:', leaderboard.length);
+            
+            return res.status(200).json({ 
+                success: true, 
+                entry: newScore,
+                position: leaderboard.findIndex(entry => 
+                    entry.name === newScore.name && 
+                    entry.score === newScore.score
+                ) + 1
+            });
         } catch (error) {
             console.error('Error submitting score:', error);
             return res.status(500).json({ error: 'Failed to submit score' });

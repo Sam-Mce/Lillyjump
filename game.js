@@ -721,13 +721,19 @@ async function submitScore(name, score) {
         }
         
         const result = await response.json();
+        if (!result.success) {
+            throw new Error('Server returned unsuccessful response');
+        }
+        
         console.log('Score submitted successfully:', result);
         
-        // Refresh the leaderboard after submitting
+        // Wait for the leaderboard to update
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure server processes the score
         await fetchLeaderboard();
+        return true;
     } catch (error) {
         console.error('Error submitting score:', error);
-        alert('Failed to submit score. Please try again.');
+        return false;
     }
 }
 
@@ -752,9 +758,13 @@ function gameOver() {
         
         submitButton.disabled = true;
         try {
-            await submitScore(name, score);
-            nameInput.value = '';
-            alert('Score submitted successfully!');
+            const success = await submitScore(name, score);
+            if (success) {
+                nameInput.value = '';
+                alert('Score submitted successfully!');
+            } else {
+                alert('Failed to submit score. Please try again.');
+            }
         } finally {
             submitButton.disabled = false;
         }
