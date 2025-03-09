@@ -22,18 +22,23 @@
             "use": "@vercel/static"
         },
         {
-            "src": "data/**/*",
+            "src": "data/*.json",
             "use": "@vercel/static"
         },
         {
-            "src": "api/**/*.js",
+            "src": "api/*.js",
             "use": "@vercel/node"
         }
     ],
     "routes": [
         {
             "src": "/api/leaderboard",
-            "methods": ["GET", "POST", "OPTIONS"],
+            "methods": ["GET", "OPTIONS"],
+            "dest": "/api/leaderboard.js"
+        },
+        {
+            "src": "/api/score",
+            "methods": ["POST", "OPTIONS"],
             "dest": "/api/leaderboard.js"
         },
         {

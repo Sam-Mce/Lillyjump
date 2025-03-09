@@ -1,30 +1,33 @@
-// In-memory leaderboard (for serverless environment)
+// Store scores in memory (this will reset on each deployment)
 let leaderboard = [];
 
-export default function handler(req, res) {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Credentials', true);
+export default async function handler(req, res) {
+    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
 
-    // Handle OPTIONS request for CORS
+    // Handle OPTIONS request for CORS preflight
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).end();
     }
 
-    if (req.method === 'GET') {
+    // Route handling based on path
+    const path = req.url.split('?')[0];
+
+    if (path === '/api/leaderboard' && req.method === 'GET') {
         try {
             const topScores = leaderboard
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 10);
-            res.status(200).json(topScores);
+            return res.status(200).json(topScores);
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
-            res.status(500).json({ error: 'Failed to fetch leaderboard' });
+            return res.status(500).json({ error: 'Failed to fetch leaderboard' });
         }
-    } else if (req.method === 'POST') {
+    }
+
+    if (path === '/api/score' && req.method === 'POST') {
         try {
             const { name, score } = req.body;
             
@@ -38,22 +41,25 @@ export default function handler(req, res) {
             
             const newScore = {
                 name: name.trim(),
-                score: Math.floor(score),
-                date: new Date().toISOString()
+                score: Math.floor(score), // Ensure integer score
+                date: new Date()
             };
             
             leaderboard.push(newScore);
             
-            // Keep only top 100 scores
-            leaderboard.sort((a, b) => b.score - a.score);
-            leaderboard = leaderboard.slice(0, 100);
+            // Keep only top 100 scores to manage memory
+            if (leaderboard.length > 100) {
+                leaderboard.sort((a, b) => b.score - a.score);
+                leaderboard = leaderboard.slice(0, 100);
+            }
             
-            res.status(200).json({ success: true, entry: newScore });
+            return res.status(200).json({ success: true, entry: newScore });
         } catch (error) {
             console.error('Error submitting score:', error);
-            res.status(500).json({ error: 'Failed to submit score' });
+            return res.status(500).json({ error: 'Failed to submit score' });
         }
-    } else {
-        res.status(405).json({ error: 'Method not allowed' });
     }
+
+    // Handle 404s
+    return res.status(404).json({ error: 'Not found' });
 } 

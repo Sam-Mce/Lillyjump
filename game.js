@@ -689,8 +689,8 @@ async function fetchLeaderboard() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const leaderboard = await response.json();
-        updateLeaderboardDisplay(leaderboard);
+        const scores = await response.json();
+        updateLeaderboardDisplay(scores);
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
     }
@@ -706,47 +706,28 @@ function updateLeaderboardDisplay(leaderboard) {
     `).join('');
 }
 
-async function submitScore() {
-    const nameInput = document.getElementById('playerName');
-    const submitButton = document.getElementById('submitScore');
-    const name = nameInput.value.trim();
-    
-    if (!name) {
-        alert('Please enter your name!');
-        return;
-    }
-    
-    submitButton.disabled = true;
-    
+async function submitScore(name, score) {
     try {
-        const response = await fetch('/api/leaderboard', {
+        const response = await fetch('/api/score', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                name: name,
-                score: score
-            })
+            body: JSON.stringify({ name, score })
         });
-
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
-        if (data.success) {
-            await fetchLeaderboard();
-            nameInput.value = '';
-            alert('Score submitted successfully!');
-        } else {
-            throw new Error('Server returned unsuccessful response');
-        }
+        const result = await response.json();
+        console.log('Score submitted successfully:', result);
+        
+        // Refresh the leaderboard after submitting
+        await fetchLeaderboard();
     } catch (error) {
         console.error('Error submitting score:', error);
-        alert('Failed to submit score. Please try again.\nError: ' + error.message);
-    } finally {
-        submitButton.disabled = false;
+        alert('Failed to submit score. Please try again.');
     }
 }
 
@@ -754,17 +735,30 @@ async function submitScore() {
 function gameOver() {
     isGameOver = true;
     document.getElementById('gameOver').style.display = 'block';
+    
+    // Show final score
     document.getElementById('finalScore').textContent = score;
-    document.getElementById('finalHighScore').textContent = highScore;
     
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('highScore', highScore);
-    }
+    // Set up score submission handler
+    const submitButton = document.getElementById('submitScore');
+    const nameInput = document.getElementById('playerName');
     
-    // Enable the submit button and clear the name input
-    document.getElementById('submitScore').disabled = false;
-    document.getElementById('playerName').value = '';
+    submitButton.onclick = async () => {
+        const name = nameInput.value.trim();
+        if (!name) {
+            alert('Please enter your name!');
+            return;
+        }
+        
+        submitButton.disabled = true;
+        try {
+            await submitScore(name, score);
+            nameInput.value = '';
+            alert('Score submitted successfully!');
+        } finally {
+            submitButton.disabled = false;
+        }
+    };
     
     // Fetch and display the leaderboard
     fetchLeaderboard();
