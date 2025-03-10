@@ -29,6 +29,28 @@ const CAMERA_SMOOTH_SPEED = 0.1;
 const MAX_LILYPADS = 8;
 const CAMERA_HEIGHT = 5;
 const CAMERA_DISTANCE = 10;
+let gameMusic;
+let jumpSound;
+
+// Sound constructor
+function sound(src) {
+    this.sound = document.createElement("audio");
+    this.sound.src = src;
+    this.sound.setAttribute("preload", "auto");
+    this.sound.setAttribute("controls", "none");
+    this.sound.style.display = "none";
+    document.body.appendChild(this.sound);
+    this.play = function(){
+        this.sound.play();
+    }
+    this.stop = function(){
+        this.sound.pause();
+        this.sound.currentTime = 0;
+    }
+    this.setVolume = function(volume) {
+        this.sound.volume = volume;
+    }
+}
 
 // Create a tree
 function createTree(x, z, scale = 1) {
@@ -542,7 +564,10 @@ function handleKeyDown(event) {
     switch(event.code) {
         case 'Space':
             if (!isJumping) {
-                hasInteracted = true;
+                // Start background music on first jump if not already playing
+                if (!gameMusic.sound.playing) {
+                    gameMusic.play();
+                }
                 isJumping = true;
                 jumpForce = JUMP_POWER;
                 // Move frog forward when jumping
@@ -818,6 +843,11 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
 
+    // Initialize background music
+    gameMusic = new sound("music/background-music.mp3");
+    gameMusic.setVolume(0.3); // Set background music volume to 30%
+    gameMusic.sound.loop = true; // Enable looping for background music
+    
     // Set initial score
     score = 0;
 

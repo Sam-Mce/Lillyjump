@@ -97,7 +97,26 @@
             <div id="leaderboardEntries"></div>
         </div>
     </div>
+    <button id="soundToggle" style="position: fixed; top: 10px; right: 10px; z-index: 1000; padding: 10px; background: rgba(255, 255, 255, 0.7); border: none; border-radius: 5px; cursor: pointer;">
+        🔊 Music On
+    </button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
+    <script>
+        // Add music toggle functionality
+        let musicOn = true;
+        const soundToggle = document.getElementById('soundToggle');
+        
+        soundToggle.addEventListener('click', function() {
+            musicOn = !musicOn;
+            if (musicOn) {
+                gameMusic.setVolume(0.3);
+                this.textContent = '🔊 Music On';
+            } else {
+                gameMusic.setVolume(0);
+                this.textContent = '🔈 Music Off';
+            }
+        });
+    </script>
 </body>
 </html> 
