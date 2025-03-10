@@ -9,7 +9,7 @@ let currentLilypad = null;
 let frogOffsetX = 0;
 let cameraTargetZ = 0;
 let water;
-let waterTexture = null;  // Add global water texture variable
+let waterTexture = null;
 let waterBlocks = [];
 let waterTime = 0;
 let lastTime = performance.now();
@@ -662,7 +662,7 @@ async function submitScore(name, score) {
     }
 }
 
-// Modify gameOver function to remove music handling
+// Game over handling
 function gameOver() {
     isGameOver = true;
     document.getElementById('gameOver').style.display = 'block';
@@ -704,7 +704,7 @@ function gameOver() {
     fetchLeaderboard();
 }
 
-// Modify restartGame to remove music handling
+// Reset game state and setup
 function restartGame() {
     // Hide game over screen
     document.getElementById('gameOver').style.display = 'none';
@@ -769,54 +769,8 @@ function restartGame() {
     }
     scene.userData.clouds = clouds;
 
-    // Create water
-    const waterGeometry = new THREE.PlaneGeometry(100, 1000);
-    const waterMaterial = new THREE.MeshPhongMaterial({
-        color: 0x1e6ea3,
-        transparent: true,
-        opacity: 0.9,
-        side: THREE.DoubleSide
-    });
-
-    // Create water texture
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 512;
-    canvas.height = 512;
-
-    // Create gradient pattern
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#1e6ea3');
-    gradient.addColorStop(0.3, '#2980b9');
-    gradient.addColorStop(0.7, '#1e6ea3');
-    gradient.addColorStop(1, '#2980b9');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Add ripple effect
-    for (let i = 0; i < 1000; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const radius = Math.random() * 2 + 1;
-        const alpha = Math.random() * 0.1;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.fill();
-    }
-
-    // Apply texture
-    const waterTexture = new THREE.CanvasTexture(canvas);
-    waterTexture.wrapS = THREE.RepeatWrapping;
-    waterTexture.wrapT = THREE.RepeatWrapping;
-    waterTexture.repeat.set(2, 20);
-    
-    waterMaterial.map = waterTexture;
-    water = new THREE.Mesh(waterGeometry, waterMaterial);
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(0, -2, 200);
+    // Create water (reusing texture)
+    water = createWater();
     scene.add(water);
 
     // Add sun
@@ -867,6 +821,9 @@ function init() {
     // Set initial score
     score = 0;
 
+    // Create water texture once
+    waterTexture = createWaterTexture();
+
     // Add clouds
     const clouds = [];
     for(let i = 0; i < 30; i++) {
@@ -887,13 +844,13 @@ function init() {
     fpsDisplay.id = 'fpsDisplay';
     fpsDisplay.style.position = 'fixed';
     fpsDisplay.style.top = '10px';
-    fpsDisplay.style.right = '10px';  // Changed from left to right
+    fpsDisplay.style.right = '10px';
     fpsDisplay.style.color = 'white';
     fpsDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    fpsDisplay.style.padding = '5px 10px';  // Added more horizontal padding
+    fpsDisplay.style.padding = '5px 10px';
     fpsDisplay.style.borderRadius = '3px';
     fpsDisplay.style.fontFamily = 'monospace';
-    fpsDisplay.style.fontSize = '14px';  // Added explicit font size
+    fpsDisplay.style.fontSize = '14px';
     document.body.appendChild(fpsDisplay);
 
     // Create camera
@@ -906,55 +863,8 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Create water surface with texture
-    const waterGeometry = new THREE.PlaneGeometry(100, 1000);
-    const waterMaterial = new THREE.MeshPhongMaterial({
-        color: 0x1e6ea3,
-        transparent: true,
-        opacity: 0.9,
-        side: THREE.DoubleSide
-    });
-
-    // Create a canvas for the water texture
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 512;
-    canvas.height = 512;
-
-    // Create gradient pattern
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#1e6ea3');
-    gradient.addColorStop(0.3, '#2980b9');
-    gradient.addColorStop(0.7, '#1e6ea3');
-    gradient.addColorStop(1, '#2980b9');
-
-    // Apply the gradient
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Add some noise/ripple effect
-    for (let i = 0; i < 1000; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const radius = Math.random() * 2 + 1;
-        const alpha = Math.random() * 0.1;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.fill();
-    }
-
-    // Create texture from canvas
-    const waterTexture = new THREE.CanvasTexture(canvas);
-    waterTexture.wrapS = THREE.RepeatWrapping;
-    waterTexture.wrapT = THREE.RepeatWrapping;
-    waterTexture.repeat.set(2, 20);
-    
-    waterMaterial.map = waterTexture;
-    water = new THREE.Mesh(waterGeometry, waterMaterial);
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(0, -2, 200);
+    // Create water
+    water = createWater();
     scene.add(water);
 
     // Add sun
@@ -1348,7 +1258,6 @@ function createForestSection(startZ, endZ) {
 // Modify the createIgloo function to make the entrance more visible
 function createIgloo(x, z, scale = 1) {
     const iglooGroup = new THREE.Group();
-    iglooGroup.isSun = true;  // Add this property to identify the igloo
     
     // Colors
     const snowColor = 0xffffff;  // Pure white for main blocks
@@ -1678,6 +1587,62 @@ function createCloud() {
     cloudGroup.rotation.y = Math.random() * Math.PI * 2;
     
     return cloudGroup;
+}
+
+// Create water texture once and reuse
+function createWaterTexture() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 512;
+    canvas.height = 512;
+
+    // Create gradient pattern
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#1e6ea3');
+    gradient.addColorStop(0.3, '#2980b9');
+    gradient.addColorStop(0.7, '#1e6ea3');
+    gradient.addColorStop(1, '#2980b9');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Add ripple effect
+    for (let i = 0; i < 1000; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 2 + 1;
+        const alpha = Math.random() * 0.1;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.fill();
+    }
+
+    // Create and configure texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 20);
+    
+    return texture;
+}
+
+// Create water mesh
+function createWater() {
+    const waterGeometry = new THREE.PlaneGeometry(100, 1000);
+    const waterMaterial = new THREE.MeshPhongMaterial({
+        color: 0x1e6ea3,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide,
+        map: waterTexture
+    });
+    
+    const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+    waterMesh.rotation.x = -Math.PI / 2;
+    waterMesh.position.set(0, -2, 200);
+    return waterMesh;
 }
 
 // Start the game

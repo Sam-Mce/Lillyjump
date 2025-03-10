@@ -78,26 +78,9 @@
             background: #cccccc;
             cursor: not-allowed;
         }
-        #musicBtn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 1000;
-            font-size: 24px;
-            border: none;
-            color: white;
-        }
-        #musicBtn:hover {
-            background: rgba(0, 0, 0, 0.7);
-        }
     </style>
 </head>
 <body>
-    <button id="musicBtn">🔇</button>
     <div id="ui">
         <div id="score">Score: 0</div>
         <div id="highScore">High Score: 0</div>
@@ -114,23 +97,6 @@
             <div id="leaderboardEntries"></div>
         </div>
     </div>
-    <script>
-        // Simple music control
-        const musicBtn = document.getElementById('musicBtn');
-        const audio = new Audio('music/lofi-background-music-2-309039.mp3');
-        audio.loop = true;
-        audio.volume = 0.3;
-
-        musicBtn.addEventListener('click', () => {
-            if (audio.paused) {
-                audio.play();
-                musicBtn.textContent = '🔊';
-            } else {
-                audio.pause();
-                musicBtn.textContent = '🔇';
-            }
-        });
-    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
 </body>

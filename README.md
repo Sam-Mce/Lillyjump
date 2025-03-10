@@ -4,10 +4,13 @@ A fun jumping frog game with a leaderboard where you help a frog navigate throug
 
 ## Features
 
+- Endless runner style gameplay
+- Procedurally generated environment
+- Snow biome after score 50
+- Global leaderboard
 - Beautiful 3D graphics with a blocky art style
 - Dynamic biome changes as you progress
 - Background music that starts on first jump
-- Global leaderboard
 - Smooth animations and controls
 
 ## How to Play
