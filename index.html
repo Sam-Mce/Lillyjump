@@ -78,9 +78,29 @@
             background: #cccccc;
             cursor: not-allowed;
         }
+        #soundToggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+        #soundToggle:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
     </style>
 </head>
 <body>
+    <button id="soundToggle">🔊 Sound On</button>
+    <audio id="gameMusic" loop>
+        <source src="music/lofi-background-music-2-309039.mp3" type="audio/mp3">
+    </audio>
     <div id="ui">
         <div id="score">Score: 0</div>
         <div id="highScore">High Score: 0</div>
@@ -98,23 +118,43 @@
         </div>
     </div>
     <script>
-        // Remove any existing music elements
-        window.addEventListener('load', function() {
-            // Remove music button if it exists
-            const musicButton = document.getElementById('musicControl');
-            if (musicButton) {
-                musicButton.remove();
+        // Simple sound control
+        const soundToggle = document.getElementById('soundToggle');
+        const gameMusic = document.getElementById('gameMusic');
+        
+        if (gameMusic) {
+            gameMusic.volume = 0.3;
+        }
+        
+        soundToggle.addEventListener('click', function() {
+            if (gameMusic.paused) {
+                gameMusic.play()
+                    .then(() => {
+                        soundToggle.textContent = '🔊 Sound On';
+                    })
+                    .catch(err => {
+                        console.error('Error playing music:', err);
+                    });
+            } else {
+                gameMusic.pause();
+                soundToggle.textContent = '🔈 Sound Off';
             }
-            
-            // Remove audio element if it exists
-            const audioElement = document.getElementById('bgMusic');
-            if (audioElement) {
-                audioElement.remove();
-            }
-            
-            // Clear any music-related localStorage
-            localStorage.removeItem('isMusicPlaying');
         });
+
+        // Start music on first interaction
+        document.addEventListener('keydown', function startMusic() {
+            if (gameMusic && gameMusic.paused) {
+                gameMusic.play()
+                    .then(() => {
+                        soundToggle.textContent = '🔊 Sound On';
+                    })
+                    .catch(err => {
+                        console.error('Error playing music:', err);
+                    });
+            }
+            // Remove this listener after first interaction
+            document.removeEventListener('keydown', startMusic);
+        }, { once: true });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
