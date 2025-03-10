@@ -43,7 +43,12 @@
         },
         {
             "src": "/(.*)",
-            "dest": "/$1"
+            "dest": "/$1",
+            "headers": {
+                "cache-control": "no-cache, no-store, must-revalidate",
+                "pragma": "no-cache",
+                "expires": "0"
+            }
         }
     ]
 } 

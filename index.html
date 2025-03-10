@@ -78,28 +78,6 @@
             background: #cccccc;
             cursor: not-allowed;
         }
-        #musicControl {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 5px;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        #musicControl:hover {
-            background: rgba(0, 0, 0, 0.7);
-        }
-        #musicControl.muted {
-            opacity: 0.7;
-        }
     </style>
 </head>
 <body>
@@ -107,13 +85,6 @@
         <div id="score">Score: 0</div>
         <div id="highScore">High Score: 0</div>
     </div>
-    <button id="musicControl" onclick="toggleMusic()">
-        🎵 Music: Off
-    </button>
-    <audio id="bgMusic" preload="auto" loop>
-        <source src="music/lofi-background-music-2-309039.mp3" type="audio/mp3">
-        Your browser does not support the audio element.
-    </audio>
     <div id="gameOver">
         <h2>Game Over!</h2>
         <p>Your Score: <span id="finalScore">0</span></p>
@@ -126,6 +97,25 @@
             <div id="leaderboardEntries"></div>
         </div>
     </div>
+    <script>
+        // Remove any existing music elements
+        window.addEventListener('load', function() {
+            // Remove music button if it exists
+            const musicButton = document.getElementById('musicControl');
+            if (musicButton) {
+                musicButton.remove();
+            }
+            
+            // Remove audio element if it exists
+            const audioElement = document.getElementById('bgMusic');
+            if (audioElement) {
+                audioElement.remove();
+            }
+            
+            // Clear any music-related localStorage
+            localStorage.removeItem('isMusicPlaying');
+        });
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
 </body>

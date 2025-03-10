@@ -15,8 +15,6 @@ let waterTime = 0;
 let lastTime = performance.now();
 let frameCount = 0;
 let fps = 0;
-let bgMusic = null;
-let isMusicPlaying = false;
 let hasInteracted = false;  // Add this flag to track user interaction
 const WATER_COLORS = [0x1e6ea3, 0x1e78b3];  // Brighter, more water-like blues
 const JUMP_POWER = 0.1;
@@ -31,74 +29,6 @@ const CAMERA_SMOOTH_SPEED = 0.1;
 const MAX_LILYPADS = 8;
 const CAMERA_HEIGHT = 5;
 const CAMERA_DISTANCE = 10;
-
-// Music controls
-function initMusic() {
-    bgMusic = document.getElementById('bgMusic');
-    if (bgMusic) {
-        bgMusic.volume = 0.3;
-        bgMusic.load(); // Ensure the audio is loaded
-        
-        // Add error handling for music
-        bgMusic.addEventListener('error', (e) => {
-            console.error('Error loading music:', e);
-            updateMusicButtonState();
-        });
-
-        // Add loaded data handler
-        bgMusic.addEventListener('loadeddata', () => {
-            console.log('Music loaded successfully');
-            updateMusicButtonState();
-        });
-    }
-}
-
-function updateMusicButtonState() {
-    const musicButton = document.getElementById('musicControl');
-    if (!bgMusic || !musicButton) return;
-    
-    try {
-        if (bgMusic.paused) {
-            musicButton.textContent = '🎵 Music: Off';
-            musicButton.classList.add('muted');
-            isMusicPlaying = false;
-        } else {
-            musicButton.textContent = '🎵 Music: On';
-            musicButton.classList.remove('muted');
-            isMusicPlaying = true;
-        }
-    } catch (error) {
-        console.error('Error updating music button state:', error);
-        musicButton.textContent = '🎵 Music: Error';
-    }
-}
-
-function toggleMusic() {
-    if (!bgMusic) return;
-    
-    try {
-        if (bgMusic.paused) {
-            bgMusic.play()
-                .then(() => {
-                    console.log('Music started playing');
-                    isMusicPlaying = true;
-                    updateMusicButtonState();
-                })
-                .catch(error => {
-                    console.error('Error playing music:', error);
-                    isMusicPlaying = false;
-                    updateMusicButtonState();
-                });
-        } else {
-            bgMusic.pause();
-            isMusicPlaying = false;
-            updateMusicButtonState();
-        }
-    } catch (error) {
-        console.error('Error toggling music:', error);
-        updateMusicButtonState();
-    }
-}
 
 // Create a tree
 function createTree(x, z, scale = 1) {
@@ -612,21 +542,7 @@ function handleKeyDown(event) {
     switch(event.code) {
         case 'Space':
             if (!isJumping) {
-                // Start music on first jump if not already playing
-                if (!hasInteracted) {
-                    hasInteracted = true;
-                    if (!isMusicPlaying && bgMusic) {
-                        bgMusic.play()
-                            .then(() => {
-                                isMusicPlaying = true;
-                                updateMusicButtonState();
-                            })
-                            .catch(error => {
-                                console.error('Error playing music:', error);
-                            });
-                    }
-                }
-                
+                hasInteracted = true;
                 isJumping = true;
                 jumpForce = JUMP_POWER;
                 // Move frog forward when jumping
@@ -698,6 +614,8 @@ async function fetchLeaderboard() {
 
 function updateLeaderboardDisplay(leaderboard) {
     const container = document.getElementById('leaderboardEntries');
+    if (!container) return;  // Guard against missing container
+    
     container.innerHTML = leaderboard.map((entry, index) => `
         <div class="leaderboard-entry">
             <span>${index + 1}. ${entry.name}</span>
@@ -737,10 +655,6 @@ async function submitScore(name, score) {
         }
         
         console.log('Score submitted successfully:', result);
-        
-        // Wait for the leaderboard to update
-        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure server processes the score
-        await fetchLeaderboard();
         return true;
     } catch (error) {
         console.error('Error submitting score:', error);
@@ -748,7 +662,7 @@ async function submitScore(name, score) {
     }
 }
 
-// Modify the gameOver function to fetch leaderboard
+// Modify gameOver function to remove music handling
 function gameOver() {
     isGameOver = true;
     document.getElementById('gameOver').style.display = 'block';
@@ -772,6 +686,8 @@ function gameOver() {
             const success = await submitScore(name, score);
             if (success) {
                 nameInput.value = '';
+                // Update the leaderboard without page reload
+                await fetchLeaderboard();
                 alert('Score submitted successfully!');
             } else {
                 alert('Failed to submit score. Please check the console for details and try again.');
@@ -784,11 +700,11 @@ function gameOver() {
         }
     };
     
-    // Fetch and display the leaderboard
+    // Initial leaderboard fetch
     fetchLeaderboard();
 }
 
-// Restart game
+// Modify restartGame to remove music handling
 function restartGame() {
     // Hide game over screen
     document.getElementById('gameOver').style.display = 'none';
@@ -801,7 +717,7 @@ function restartGame() {
         }
     });
 
-    // Clear the entire scene
+    // Clear the scene
     while(scene.children.length > 0) { 
         const object = scene.children[0];
         if (object.material) {
@@ -944,9 +860,6 @@ function onWindowResize() {
 
 // Initialize the game
 function init() {
-    // Initialize music
-    initMusic();
-    
     // Create scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
@@ -956,20 +869,17 @@ function init() {
 
     // Add clouds
     const clouds = [];
-    for(let i = 0; i < 30; i++) {  // Create 30 clouds
+    for(let i = 0; i < 30; i++) {
         const cloud = createCloud();
-        // Position clouds randomly in the sky
         cloud.position.set(
-            (Math.random() - 0.5) * 200,  // Spread across width
-            20 + Math.random() * 20,      // Vary height
-            -100 + Math.random() * 1000   // Spread along length
+            (Math.random() - 0.5) * 200,
+            20 + Math.random() * 20,
+            -100 + Math.random() * 1000
         );
-        cloud.speed = 0.02 + Math.random() * 0.03;  // Random speed
+        cloud.speed = 0.02 + Math.random() * 0.03;
         clouds.push(cloud);
         scene.add(cloud);
     }
-
-    // Store clouds array in scene for access in animate
     scene.userData.clouds = clouds;
 
     // Create FPS display
@@ -1769,9 +1679,6 @@ function createCloud() {
     
     return cloudGroup;
 }
-
-// Make restartGame globally accessible
-window.restartGame = restartGame;
 
 // Start the game
 init(); 
