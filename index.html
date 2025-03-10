@@ -97,9 +97,10 @@
     </style>
 </head>
 <body>
-    <button id="soundToggle">🔊 Sound On</button>
-    <audio id="gameMusic" loop>
+    <button id="soundToggle">🔈 Sound Off</button>
+    <audio id="gameMusic" preload="auto" loop>
         <source src="music/lofi-background-music-2-309039.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
     </audio>
     <div id="ui">
         <div id="score">Score: 0</div>
@@ -118,43 +119,80 @@
         </div>
     </div>
     <script>
-        // Simple sound control
+        // Audio initialization and control
         const soundToggle = document.getElementById('soundToggle');
         const gameMusic = document.getElementById('gameMusic');
-        
+        let musicInitialized = false;
+
+        // Set initial volume
         if (gameMusic) {
             gameMusic.volume = 0.3;
+            
+            // Add error handling for audio loading
+            gameMusic.addEventListener('error', function(e) {
+                console.error('Error loading music file:', e);
+                soundToggle.textContent = '❌ Audio Error';
+                soundToggle.style.background = 'rgba(255, 0, 0, 0.5)';
+            });
+
+            // Add loaded data handler
+            gameMusic.addEventListener('loadeddata', function() {
+                console.log('Music file loaded successfully');
+                musicInitialized = true;
+            });
         }
         
-        soundToggle.addEventListener('click', function() {
+        // Sound toggle handler
+        soundToggle.addEventListener('click', async function() {
+            if (!musicInitialized) {
+                console.log('Initializing music...');
+                try {
+                    await gameMusic.load();
+                    musicInitialized = true;
+                } catch (err) {
+                    console.error('Failed to initialize music:', err);
+                    return;
+                }
+            }
+
+            console.log('Toggling music. Current state:', gameMusic.paused ? 'paused' : 'playing');
+            
             if (gameMusic.paused) {
-                gameMusic.play()
-                    .then(() => {
-                        soundToggle.textContent = '🔊 Sound On';
-                    })
-                    .catch(err => {
-                        console.error('Error playing music:', err);
-                    });
+                try {
+                    await gameMusic.play();
+                    console.log('Music started playing');
+                    soundToggle.textContent = '🔊 Sound On';
+                } catch (err) {
+                    console.error('Error playing music:', err);
+                    soundToggle.textContent = '❌ Play Failed';
+                }
             } else {
                 gameMusic.pause();
+                console.log('Music paused');
                 soundToggle.textContent = '🔈 Sound Off';
             }
         });
 
         // Start music on first interaction
-        document.addEventListener('keydown', function startMusic() {
+        function startMusic() {
+            console.log('First interaction detected, attempting to start music...');
             if (gameMusic && gameMusic.paused) {
                 gameMusic.play()
                     .then(() => {
+                        console.log('Music started successfully on first interaction');
                         soundToggle.textContent = '🔊 Sound On';
                     })
                     .catch(err => {
-                        console.error('Error playing music:', err);
+                        console.error('Error starting music on first interaction:', err);
+                        soundToggle.textContent = '❌ Start Failed';
                     });
             }
-            // Remove this listener after first interaction
-            document.removeEventListener('keydown', startMusic);
-        }, { once: true });
+        }
+
+        // Add multiple interaction listeners to ensure music can start
+        ['keydown', 'click', 'touchstart'].forEach(event => {
+            document.addEventListener(event, startMusic, { once: true });
+        });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
