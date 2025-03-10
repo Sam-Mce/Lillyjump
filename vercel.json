@@ -18,6 +18,10 @@
             "use": "@vercel/static"
         },
         {
+            "src": "music/**",
+            "use": "@vercel/static"
+        },
+        {
             "src": "*.mp3",
             "use": "@vercel/static"
         },
@@ -40,6 +44,10 @@
             "src": "/api/score",
             "methods": ["POST", "OPTIONS"],
             "dest": "/api/leaderboard.js"
+        },
+        {
+            "src": "/music/(.*)",
+            "dest": "/music/$1"
         },
         {
             "src": "/(.*)",

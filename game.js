@@ -32,7 +32,7 @@ const CAMERA_DISTANCE = 10;
 let gameMusic;
 let jumpSound;
 
-// Sound constructor
+// Sound constructor with error handling
 function sound(src) {
     this.sound = document.createElement("audio");
     this.sound.src = src;
@@ -40,8 +40,23 @@ function sound(src) {
     this.sound.setAttribute("controls", "none");
     this.sound.style.display = "none";
     document.body.appendChild(this.sound);
+    
+    // Add error handling
+    this.sound.onerror = () => {
+        console.error('Error loading audio file:', src);
+        // Try alternative path if initial load fails
+        if (!src.startsWith('/')) {
+            this.sound.src = '/' + src;
+        }
+    };
+    
     this.play = function(){
-        this.sound.play();
+        const playPromise = this.sound.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.error('Error playing audio:', error);
+            });
+        }
     }
     this.stop = function(){
         this.sound.pause();
