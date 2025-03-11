@@ -48,7 +48,7 @@
                 "cache-control": "no-cache, no-store, must-revalidate",
                 "pragma": "no-cache",
                 "expires": "0",
-                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval'; media-src 'self'"
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self'; img-src 'self' data:; connect-src 'self'"
             }
         }
     ]
