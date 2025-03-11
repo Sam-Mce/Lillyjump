@@ -888,7 +888,7 @@ function init() {
     gameMusic.sound.loop = true; // Enable looping for background music
     
     // Set initial score
-    score = 100;
+    score = 0;
 
     // Create water texture once
     waterTexture = createWaterTexture();
