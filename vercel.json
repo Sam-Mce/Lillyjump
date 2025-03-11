@@ -18,7 +18,7 @@
             "use": "@vercel/static"
         },
         {
-            "src": "*.mp3",
+            "src": "**/*.mp3",
             "use": "@vercel/static"
         },
         {
@@ -47,7 +47,8 @@
             "headers": {
                 "cache-control": "no-cache, no-store, must-revalidate",
                 "pragma": "no-cache",
-                "expires": "0"
+                "expires": "0",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval'; media-src 'self'"
             }
         }
     ]
