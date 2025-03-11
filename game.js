@@ -477,18 +477,26 @@ function createLilypad(x, y, z, isStationary = false) {
     const size = MIN_LILYPAD_SIZE + Math.random() * (MAX_LILYPAD_SIZE - MIN_LILYPAD_SIZE);
     const lilypadGroup = new THREE.Group();
     
-    // Use the actual game score to determine if this should be a snowy lilypad
-    const isSnowBiome = score >= 50 && score <= 99;
+    // Use the actual game score to determine biome
+    const isSnowBiome = score >= 50 && score <= 100;
+    const isDesertBiome = score > 100;
     
     // Create base material with flat shading for blocky look
     const padMaterial = new THREE.MeshPhongMaterial({ 
-        color: isSnowBiome ? 0x1f4d1f : 0x2d5a27,  // Darker green in snow biome
-        flatShading: true
+        color: isDesertBiome ? 0x8B4513 : (isSnowBiome ? 0x1f4d1f : 0x2d5a27),  // Brown for desert, darker green in snow
+        flatShading: true 
     });
     const darkPadMaterial = new THREE.MeshPhongMaterial({ 
-        color: isSnowBiome ? 0x0f2f0f : 0x1a3d18,  // Darker edge in snow biome
-        flatShading: true
+        color: isDesertBiome ? 0x654321 : (isSnowBiome ? 0x0f2f0f : 0x1a3d18),  // Darker brown for desert
+        flatShading: true 
     });
+
+    // Desert sand colors
+    const sandColors = [
+        0xd2b48c,  // Tan
+        0xdeb887,  // BurlyWood
+        0xf4a460   // Sandy Brown
+    ];
 
     // Frost colors
     const frostColors = [
@@ -506,11 +514,11 @@ function createLilypad(x, y, z, isStationary = false) {
         const cube = new THREE.Mesh(geometry, material);
         cube.position.set(x * cubeSize, 0, z * cubeSize);
         
-        // Add frost in snow biome
-        if (isSnowBiome && Math.random() < 0.7) {  // 70% chance for frost on each cube
+        // Add biome-specific effects
+        if (isSnowBiome && Math.random() < 0.7) {  // Snow effect
             const frostGeometry = new THREE.BoxGeometry(
-                cubeSize * (0.3 + Math.random() * 0.3),  // Random frost size
-                0.05,  // Thin frost layer
+                cubeSize * (0.3 + Math.random() * 0.3),
+                0.05,
                 cubeSize * (0.3 + Math.random() * 0.3)
             );
             const frostMaterial = new THREE.MeshPhongMaterial({
@@ -520,9 +528,25 @@ function createLilypad(x, y, z, isStationary = false) {
                 opacity: 0.8
             });
             const frost = new THREE.Mesh(frostGeometry, frostMaterial);
-            frost.position.y = height / 2 + 0.025;  // Place on top of cube
-            frost.rotation.y = Math.random() * Math.PI * 2;  // Random rotation
+            frost.position.y = height / 2 + 0.025;
+            frost.rotation.y = Math.random() * Math.PI * 2;
             cube.add(frost);
+        } else if (isDesertBiome && Math.random() < 0.5) {  // Sand effect
+            const sandGeometry = new THREE.BoxGeometry(
+                cubeSize * (0.2 + Math.random() * 0.2),
+                0.03,
+                cubeSize * (0.2 + Math.random() * 0.2)
+            );
+            const sandMaterial = new THREE.MeshPhongMaterial({
+                color: sandColors[Math.floor(Math.random() * sandColors.length)],
+                flatShading: true,
+                transparent: true,
+                opacity: 0.9
+            });
+            const sand = new THREE.Mesh(sandGeometry, sandMaterial);
+            sand.position.y = height / 2 + 0.015;
+            sand.rotation.y = Math.random() * Math.PI * 2;
+            cube.add(sand);
         }
         
         return cube;
@@ -864,7 +888,7 @@ function init() {
     gameMusic.sound.loop = true; // Enable looping for background music
     
     // Set initial score
-    score = 0;
+    score = 100;
 
     // Create water texture once
     waterTexture = createWaterTexture();
@@ -998,8 +1022,8 @@ function animate() {
                 if (!landedLilypad) {
                     gameOver();
                 } else {
-                    // If we're about to hit score 50 (currently at 49), make the lilypad stationary
-                    if (score === 49) {
+                    // If we're about to hit score 50 or 101, make the lilypad stationary
+                    if (score === 49 || score === 100) {
                         landedLilypad.isStationary = true;
                         landedLilypad.speed = 0;
                     }
@@ -1007,15 +1031,15 @@ function animate() {
                     score++;
                     updateScore();
                     
-                    if (score === 50) {
+                    if (score === 50 || score === 101) {
                         // Store current lilypads to avoid modification during iteration
                         const currentLilypads = [...lilypads];
-                        const oldCurrentLilypad = currentLilypad; // Store reference to current lilypad
+                        const oldCurrentLilypad = currentLilypad;
                         
                         // Clear lilypads array since we'll be rebuilding it
                         lilypads = [];
                         
-                        // For each existing lilypad, create a new snowy one at the same position
+                        // For each existing lilypad, create a new biome-specific one at the same position
                         currentLilypads.forEach(oldLilypad => {
                             const newLilypad = createLilypad(
                                 oldLilypad.position.x,
@@ -1032,8 +1056,7 @@ function animate() {
                             // If this was the lilypad the frog was on, update the reference
                             if (oldLilypad === oldCurrentLilypad) {
                                 currentLilypad = newLilypad;
-                                newLilypad.speed = 0; // Ensure it stays stopped
-                                // Update frog position to match new lilypad
+                                newLilypad.speed = 0;
                                 frog.position.x = newLilypad.position.x + frogOffsetX;
                             }
                             
@@ -1041,16 +1064,15 @@ function animate() {
                             scene.remove(oldLilypad);
                         });
                         
-                        // Find and remove only terrain objects (excluding clouds)
+                        // Find and remove only terrain objects (excluding clouds for snow biome)
                         const objectsToRemove = [];
                         scene.traverse((object) => {
-                            // Only remove non-essential objects, but keep clouds
                             if (object !== water && 
                                 object !== frog && 
                                 !lilypads.includes(object) && 
                                 object !== scene && 
                                 !object.isLight && 
-                                !scene.userData.clouds.includes(object) && 
+                                (score === 101 || !scene.userData.clouds.includes(object)) && 
                                 !lilypads.some(pad => pad.children.includes(object))) {
                                 objectsToRemove.push(object);
                             }
@@ -1069,7 +1091,7 @@ function animate() {
                             }
                         });
                         
-                        // Create new snow biome sections
+                        // Create new biome sections
                         const currentZ = frog.position.z;
                         createForestSection(currentZ - 100, currentZ + 400);
                     } else {
@@ -1144,14 +1166,15 @@ function animate() {
 // Modify createForestSection to handle different biomes
 function createForestSection(startZ, endZ) {
     const waterWidth = 100;
-    const isSnowBiome = score >= 50;
+    const isSnowBiome = score >= 50 && score <= 100;
+    const isDesertBiome = score > 100;
     const groundY = -1.98;  // Ground level y-position
     const screenWidth = 400;  // Total width of visible area
     
     // Create main ground on both sides
     const groundGeometry = new THREE.PlaneGeometry(waterWidth/2, endZ - startZ);
     const groundMaterial = new THREE.MeshPhongMaterial({
-        color: isSnowBiome ? 0xffffff : 0x2d5a27,
+        color: isDesertBiome ? 0xd2b48c : (isSnowBiome ? 0xffffff : 0x2d5a27),  // Sand color for desert
         side: THREE.DoubleSide
     });
     
@@ -1167,8 +1190,12 @@ function createForestSection(startZ, endZ) {
     scene.add(leftGround);
     scene.add(rightGround);
 
-    // Add large hills in background
-    const hillColors = isSnowBiome ? [
+    // Add large hills/dunes in background
+    const hillColors = isDesertBiome ? [
+        0xd2b48c,  // Tan
+        0xdeb887,  // BurlyWood
+        0xf4a460   // Sandy Brown
+    ] : (isSnowBiome ? [
         0xffffff,  // Pure white
         0xf0f0f0,  // Slightly darker white
         0xe8e8e8   // Light grey white
@@ -1176,30 +1203,29 @@ function createForestSection(startZ, endZ) {
         0x2d5a27,  // Dark forest green
         0x3d7a37,  // Medium forest green
         0x4a8f40,  // Bright forest green
-    ];
+    ]);
 
     // Function to create a row of large hills
     function createHillRow(baseX, z, isLeftSide) {
         const hillCount = 2;  // Fewer, larger hills per row
-        const baseScale = 2.5;  // Much larger base size for hills
+        const baseScale = 2.5;  // Consistent hill size
         
         for (let i = 0; i < hillCount; i++) {
-            const scale = baseScale * (0.9 + Math.random() * 0.3);  // Slight size variation
-            const xOffset = (Math.random() - 0.5) * 30;  // Wider position variation
-            const zOffset = (Math.random() - 0.5) * 40;  // Longer position variation
+            const scale = baseScale * (0.9 + Math.random() * 0.3);
+            const xOffset = (Math.random() - 0.5) * 30;
+            const zOffset = (Math.random() - 0.5) * 40;
             
-            // Calculate x position based on side, extending further out
             const x = isLeftSide ? 
-                -(waterWidth * 1.5) + xOffset :  // Left side hills, further out
-                (waterWidth * 1.5) + xOffset;    // Right side hills, further out
+                -(waterWidth * 1.5) + xOffset :
+                (waterWidth * 1.5) + xOffset;
             
             const hill = createHill(
                 x,
                 z + zOffset,
                 scale,
-                12 + Math.floor(Math.random() * 4),  // 12-15 layers for taller hills
-                35,  // larger baseWidth
-                isSnowBiome,  // Pass snow biome status
+                12 + Math.floor(Math.random() * 4),
+                35,
+                isSnowBiome,
                 hillColors
             );
             hill.position.y = groundY;
@@ -1207,34 +1233,147 @@ function createForestSection(startZ, endZ) {
         }
     }
 
-    // Add hills along the section length with more spacing
-    const hillSpacing = 120;  // More space between rows for larger hills
-    const numHillRows = Math.ceil((endZ - startZ) / hillSpacing);
-    
-    for (let i = 0; i < numHillRows; i++) {
-        const z = startZ + (i * hillSpacing);
+    if (!isDesertBiome) {
+        // Add hills along the section length for forest and snow biomes
+        const hillSpacing = 120;
+        const numHillRows = Math.ceil((endZ - startZ) / hillSpacing);
         
-        // Create hills on both sides
-        createHillRow(0, z, true);   // Left side
-        createHillRow(0, z, false);  // Right side
+        for (let i = 0; i < numHillRows; i++) {
+            const z = startZ + (i * hillSpacing);
+            createHillRow(0, z, true);   // Left side
+            createHillRow(0, z, false);  // Right side
+        }
+    } else {
+        // Add pyramids for desert biome
+        const pyramidSpacing = 80;  // Closer spacing between pyramids
+        const numPyramidRows = Math.ceil((endZ - startZ) / pyramidSpacing);
+        
+        for (let i = 0; i < numPyramidRows; i++) {
+            const z = startZ + (i * pyramidSpacing);
+            
+            // Add multiple pyramids on each side with varying scales
+            const pyramidsPerSide = 2 + Math.floor(Math.random() * 2); // 2-3 pyramids per side
+            
+            // Left side pyramids
+            for (let j = 0; j < pyramidsPerSide; j++) {
+                const scale = 1.5 + Math.random() * 1.0; // Larger scale variation
+                const xOffset = (Math.random() - 0.5) * 40; // Wider x variation
+                const zOffset = (Math.random() - 0.5) * 40;
+                
+                const pyramid = createSandDune(
+                    -(waterWidth * (1.2 + j * 0.3)) + xOffset,
+                    z + zOffset,
+                    scale
+                );
+                pyramid.position.y = groundY;
+                scene.add(pyramid);
+            }
+            
+            // Right side pyramids
+            for (let j = 0; j < pyramidsPerSide; j++) {
+                const scale = 1.5 + Math.random() * 1.0;
+                const xOffset = (Math.random() - 0.5) * 40;
+                const zOffset = (Math.random() - 0.5) * 40;
+                
+                const pyramid = createSandDune(
+                    (waterWidth * (1.2 + j * 0.3)) + xOffset,
+                    z + zOffset,
+                    scale
+                );
+                pyramid.position.y = groundY;
+                scene.add(pyramid);
+            }
+            
+            // Add camels near pyramids with higher frequency
+            if (Math.random() < 0.8) {  // 80% chance for camels
+                const numCamels = 1 + Math.floor(Math.random() * 2); // 1-2 camels per side
+                
+                // Left side camels
+                for (let k = 0; k < numCamels; k++) {
+                    const camel = createCamel(
+                        -(waterWidth * 0.75) + (Math.random() * 30 - 15),
+                        z + (Math.random() - 0.5) * 30,
+                        0.8 + Math.random() * 0.4
+                    );
+                    camel.position.y = groundY;
+                    camel.rotation.y = Math.random() * Math.PI * 2;
+                    scene.add(camel);
+                }
+                
+                // Right side camels
+                for (let k = 0; k < numCamels; k++) {
+                    const camel = createCamel(
+                        (waterWidth * 0.75) + (Math.random() * 30 - 15),
+                        z + (Math.random() - 0.5) * 30,
+                        0.8 + Math.random() * 0.4
+                    );
+                    camel.position.y = groundY;
+                    camel.rotation.y = Math.random() * Math.PI * 2;
+                    scene.add(camel);
+                }
+            }
+        }
     }
 
-    // Add trees in forest biome
-    if (!isSnowBiome) {
+    // Add biome-specific features
+    if (isDesertBiome) {
+        // Add more cacti with increased frequency
+        const cactiPerSide = 40;  // More cacti
+        const spacing = (endZ - startZ) / cactiPerSide;
+        const groundWidth = waterWidth/2;
+
+        for (let i = 0; i < cactiPerSide; i++) {
+            const z = startZ + (i * spacing) + (Math.random() * spacing * 0.5);
+            const scale = 0.8 + Math.random() * 0.8;
+
+            if (Math.random() < 0.7) {  // Increased chance for cactus (70%)
+                // Add multiple cacti at each position
+                const cactiAtPosition = 1 + Math.floor(Math.random() * 2); // 1-2 cacti
+                
+                // Left side cacti
+                for (let j = 0; j < cactiAtPosition; j++) {
+                    const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const leftCactus = createCactus(leftX, z + (Math.random() * spacing * 0.3), scale);
+                    leftCactus.position.y = groundY;
+                    scene.add(leftCactus);
+                }
+
+                // Right side cacti
+                for (let j = 0; j < cactiAtPosition; j++) {
+                    const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const rightCactus = createCactus(rightX, z + (Math.random() * spacing * 0.3), scale);
+                    rightCactus.position.y = groundY;
+                    scene.add(rightCactus);
+                }
+            }
+        }
+
+        // Remove clouds in desert biome
+        scene.userData.clouds.forEach(cloud => {
+            cloud.visible = false;
+        });
+
+        // Update sun
+        scene.children.forEach(child => {
+            if (child.isSun) {
+                scene.remove(child);
+                const desertSun = createDesertSun();
+                scene.add(desertSun);
+            }
+        });
+    } else if (!isSnowBiome) {
+        // Original forest code for normal biome
         const sectionLength = endZ - startZ;
-        const treesPerSide = 75;  // Keep dense tree coverage
+        const treesPerSide = 75;
         const spacing = sectionLength / treesPerSide;
         const groundWidth = waterWidth/2;
 
-        // Add trees with varying types and sizes
         for (let i = 0; i < treesPerSide; i++) {
             const z = startZ + (i * spacing) + (Math.random() * spacing * 0.5);
-            const scale = 0.8 + Math.random() * 0.8;  // Scale range 0.8-1.6
+            const scale = 0.8 + Math.random() * 0.8;
 
-            // Add multiple trees at each z-position
-            const treesAtPosition = 2 + Math.floor(Math.random() * 2);  // 2-3 trees at each position
+            const treesAtPosition = 2 + Math.floor(Math.random() * 2);
             
-            // Left side trees
             for (let j = 0; j < treesAtPosition; j++) {
                 const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
                 const leftTree = createVariedTree(leftX, z + (Math.random() * spacing * 0.3), scale);
@@ -1242,7 +1381,6 @@ function createForestSection(startZ, endZ) {
                 scene.add(leftTree);
             }
 
-            // Right side trees
             for (let j = 0; j < treesAtPosition; j++) {
                 const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
                 const rightTree = createVariedTree(rightX, z + (Math.random() * spacing * 0.3), scale);
@@ -1251,9 +1389,9 @@ function createForestSection(startZ, endZ) {
             }
         }
     } else {
-        // Add snowy trees and igloos
+        // Existing snow biome code
         const sectionLength = endZ - startZ;
-        const treesPerSide = 50;  // Fewer trees in snow biome
+        const treesPerSide = 50;
         const spacing = sectionLength / treesPerSide;
         const groundWidth = waterWidth/2;
 
@@ -1261,38 +1399,32 @@ function createForestSection(startZ, endZ) {
             const z = startZ + (i * spacing) + (Math.random() * spacing * 0.5);
             const scale = 0.8 + Math.random() * 0.8;
 
-            // Left side snowy trees and igloos
-            if (Math.random() < 0.7) {  // 70% chance for a tree
+            if (Math.random() < 0.7) {
                 const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
                 const leftTree = createSnowyTree(leftX, z, scale);
                 leftTree.position.y = groundY;
                 scene.add(leftTree);
             }
             
-            // 5% chance for an igloo on the left side
             if (Math.random() < 0.05) {
                 const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const leftIgloo = createIgloo(leftX, z, 1.2);  // Slightly larger than trees
+                const leftIgloo = createIgloo(leftX, z, 1.2);
                 leftIgloo.position.y = groundY;
-                // Rotate igloo randomly
                 leftIgloo.rotation.y = Math.random() * Math.PI * 2;
                 scene.add(leftIgloo);
             }
 
-            // Right side snowy trees and igloos
-            if (Math.random() < 0.7) {  // 70% chance for a tree
+            if (Math.random() < 0.7) {
                 const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
                 const rightTree = createSnowyTree(rightX, z, scale);
                 rightTree.position.y = groundY;
                 scene.add(rightTree);
             }
             
-            // 5% chance for an igloo on the right side
             if (Math.random() < 0.05) {
                 const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const rightIgloo = createIgloo(rightX, z, 1.2);  // Slightly larger than trees
+                const rightIgloo = createIgloo(rightX, z, 1.2);
                 rightIgloo.position.y = groundY;
-                // Rotate igloo randomly
                 rightIgloo.rotation.y = Math.random() * Math.PI * 2;
                 scene.add(rightIgloo);
             }
@@ -1403,6 +1535,258 @@ function createIgloo(x, z, scale = 1) {
     iglooGroup.position.set(x, 0, z);
     iglooGroup.scale.set(1.2, 1.2, 1.2);  // Make overall igloo slightly larger
     return iglooGroup;
+}
+
+// Create a cactus
+function createCactus(x, z, scale = 1) {
+    const cactusGroup = new THREE.Group();
+    
+    // Materials
+    const cactusMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x2d5a27,  // Dark green for cactus
+        flatShading: true 
+    });
+    
+    // Main body
+    const bodyHeight = 6 * scale;
+    const bodyWidth = 1.2 * scale;
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyWidth),
+        cactusMaterial
+    );
+    body.position.y = bodyHeight/2;
+    cactusGroup.add(body);
+    
+    // Add arms
+    const armHeight = 2 * scale;
+    const armPositions = [
+        { y: bodyHeight * 0.6, dir: 1 },  // Right arm
+        { y: bodyHeight * 0.4, dir: -1 }  // Left arm
+    ];
+    
+    armPositions.forEach(({y, dir}) => {
+        const arm = new THREE.Mesh(
+            new THREE.BoxGeometry(bodyWidth * 2, armHeight, bodyWidth),
+            cactusMaterial
+        );
+        arm.position.set(dir * bodyWidth, y, 0);
+        cactusGroup.add(arm);
+        
+        // Add vertical part of arm
+        const armTop = new THREE.Mesh(
+            new THREE.BoxGeometry(bodyWidth, bodyHeight * 0.3, bodyWidth),
+            cactusMaterial
+        );
+        armTop.position.set(dir * bodyWidth * 1.5, y + armHeight/2, 0);
+        cactusGroup.add(armTop);
+    });
+    
+    cactusGroup.position.set(x, 0, z);
+    return cactusGroup;
+}
+
+// Create a sand dune
+function createSandDune(x, z, scale = 1) {
+    const duneGroup = new THREE.Group();
+    
+    const sandColors = [
+        0xd2b48c,  // Tan
+        0xdeb887,  // BurlyWood
+        0xf4a460   // Sandy Brown
+    ];
+    
+    // Increased size and layers for more pyramid-like appearance
+    const layers = 15;  // More layers
+    const baseWidth = 40 * scale;  // Much wider base
+    const layerHeight = 2.5 * scale;  // Taller layers
+    
+    for(let i = 0; i < layers; i++) {
+        const y = i * layerHeight;
+        // More gradual reduction for pyramid shape
+        const width = baseWidth * (1 - (i / layers) * 0.9);
+        
+        const geometry = new THREE.BoxGeometry(
+            width,
+            layerHeight,
+            width
+        );
+        
+        const material = new THREE.MeshPhongMaterial({
+            color: sandColors[Math.floor(Math.random() * sandColors.length)],
+            flatShading: true
+        });
+        
+        const layer = new THREE.Mesh(geometry, material);
+        layer.position.set(
+            (Math.random() - 0.5) * 1,  // Slight random offset
+            y,
+            (Math.random() - 0.5) * 1
+        );
+        
+        duneGroup.add(layer);
+    }
+    
+    duneGroup.position.set(x, 0, z);
+    return duneGroup;
+}
+
+// Create desert ground
+function createDesertGround(x, z, width, length) {
+    const groundGeometry = new THREE.PlaneGeometry(width, length, 10, 10);
+    const groundMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0xd2b48c,  // Tan color for sand
+        side: THREE.DoubleSide,
+        flatShading: true
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(x, -1.99, z);
+    return ground;
+}
+
+// Create desert sun (larger version of regular sun)
+function createDesertSun() {
+    const sunGroup = new THREE.Group();
+    sunGroup.isSun = true;
+    
+    const sunColor = 0xFFA500;  // More orange for desert sun
+    const sunGlowColor = 0xFF8C00;  // Darker orange for outer blocks
+    
+    const coreMaterial = new THREE.MeshPhongMaterial({
+        color: sunColor,
+        flatShading: true,
+        emissive: sunColor,
+        emissiveIntensity: 0.7  // Increased intensity
+    });
+    
+    const glowMaterial = new THREE.MeshPhongMaterial({
+        color: sunGlowColor,
+        flatShading: true,
+        emissive: sunGlowColor,
+        emissiveIntensity: 0.5
+    });
+
+    // Larger center cube
+    const coreSize = 12;  // Increased from 8
+    const core = new THREE.Mesh(
+        new THREE.BoxGeometry(coreSize, coreSize, coreSize),
+        coreMaterial
+    );
+    sunGroup.add(core);
+
+    // Larger glow blocks
+    const glowSize = 4;  // Increased from 3
+    const positions = [
+        { x: coreSize/2 + glowSize/2, y: 0, z: 0 },
+        { x: -(coreSize/2 + glowSize/2), y: 0, z: 0 },
+        { x: 0, y: coreSize/2 + glowSize/2, z: 0 },
+        { x: 0, y: -(coreSize/2 + glowSize/2), z: 0 }
+    ];
+
+    positions.forEach(pos => {
+        const glowBlock = new THREE.Mesh(
+            new THREE.BoxGeometry(glowSize, glowSize, glowSize),
+            glowMaterial
+        );
+        glowBlock.position.set(pos.x, pos.y, pos.z);
+        sunGroup.add(glowBlock);
+    });
+
+    const diagonalPositions = [
+        { x: 1, y: 1 }, { x: 1, y: -1 },
+        { x: -1, y: 1 }, { x: -1, y: -1 }
+    ];
+
+    diagonalPositions.forEach(pos => {
+        const glowBlock = new THREE.Mesh(
+            new THREE.BoxGeometry(glowSize, glowSize, glowSize),
+            glowMaterial
+        );
+        const offset = (coreSize/2 + glowSize/2) * 0.7;
+        glowBlock.position.set(pos.x * offset, pos.y * offset, 0);
+        sunGroup.add(glowBlock);
+    });
+
+    sunGroup.position.set(0, 40, 200);  // Higher in the sky
+    return sunGroup;
+}
+
+// Create a camel
+function createCamel(x, z, scale = 1) {
+    const camelGroup = new THREE.Group();
+    
+    // Materials
+    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0xC19A6B,  // Sandy brown for camel body
+        flatShading: true 
+    });
+    const darkMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x8B7355,  // Darker brown for details
+        flatShading: true 
+    });
+
+    // Body dimensions
+    const bodyWidth = 2 * scale;
+    const bodyHeight = 2 * scale;
+    const bodyLength = 4 * scale;
+
+    // Main body
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyLength),
+        bodyMaterial
+    );
+    body.position.y = bodyHeight * 2;
+    camelGroup.add(body);
+
+    // Neck
+    const neck = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyWidth * 0.6, bodyHeight * 1.5, bodyWidth * 0.6),
+        bodyMaterial
+    );
+    neck.position.set(0, bodyHeight * 2.8, bodyLength/2 - bodyWidth * 0.3);
+    neck.rotation.x = -Math.PI * 0.15;
+    camelGroup.add(neck);
+
+    // Head
+    const head = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyWidth * 0.7, bodyWidth * 0.8, bodyWidth * 1.2),
+        bodyMaterial
+    );
+    head.position.set(0, bodyHeight * 3.5, bodyLength/2 + bodyWidth * 0.3);
+    camelGroup.add(head);
+
+    // Humps (two humps)
+    const humpPositions = [-0.7, 0.7];
+    humpPositions.forEach(pos => {
+        const hump = new THREE.Mesh(
+            new THREE.BoxGeometry(bodyWidth * 0.8, bodyHeight * 0.8, bodyWidth * 0.8),
+            darkMaterial
+        );
+        hump.position.set(0, bodyHeight * 2.6, bodyLength * pos/2);
+        camelGroup.add(hump);
+    });
+
+    // Legs
+    const legPositions = [
+        {x: -0.35, z: 0.35}, {x: 0.35, z: 0.35},
+        {x: -0.35, z: -0.35}, {x: 0.35, z: -0.35}
+    ];
+    
+    legPositions.forEach(pos => {
+        const leg = new THREE.Mesh(
+            new THREE.BoxGeometry(bodyWidth * 0.3, bodyHeight * 2, bodyWidth * 0.3),
+            darkMaterial
+        );
+        leg.position.set(
+            pos.x * bodyWidth,
+            bodyHeight,
+            pos.z * bodyLength
+        );
+        camelGroup.add(leg);
+    });
+
+    camelGroup.position.set(x, 0, z);
+    return camelGroup;
 }
 
 // Create frog
