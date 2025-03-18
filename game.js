@@ -1,6 +1,6 @@
 // Game state
 let scene, camera, renderer, frog, lilypads = [];
-let score = 0;
+let score = 149;
 let highScore = localStorage.getItem('highScore') || 0;
 let isGameOver = false;
 let isJumping = false;
@@ -479,15 +479,16 @@ function createLilypad(x, y, z, isStationary = false) {
     
     // Use the actual game score to determine biome
     const isSnowBiome = score >= 50 && score <= 100;
-    const isDesertBiome = score > 100;
+    const isDesertBiome = score > 100 && score < 150;
+    const isSpaceBiome = score >= 150;
     
     // Create base material with flat shading for blocky look
     const padMaterial = new THREE.MeshPhongMaterial({ 
-        color: isDesertBiome ? 0x8B4513 : (isSnowBiome ? 0x1f4d1f : 0x2d5a27),  // Brown for desert, darker green in snow
+        color: isSpaceBiome ? 0x4B0082 : (isDesertBiome ? 0x8B4513 : (isSnowBiome ? 0x1f4d1f : 0x2d5a27)),  // Purple for space
         flatShading: true 
     });
     const darkPadMaterial = new THREE.MeshPhongMaterial({ 
-        color: isDesertBiome ? 0x654321 : (isSnowBiome ? 0x0f2f0f : 0x1a3d18),  // Darker brown for desert
+        color: isSpaceBiome ? 0x2A0A29 : (isDesertBiome ? 0x654321 : (isSnowBiome ? 0x0f2f0f : 0x1a3d18)),  // Dark purple for space
         flatShading: true 
     });
 
@@ -801,7 +802,7 @@ function restartGame() {
     lights.forEach(light => scene.add(light));
 
     // Reset game state
-    score = 0;
+    score = 149;
     isGameOver = false;
     isJumping = false;
     jumpForce = 0;
@@ -883,7 +884,7 @@ function init() {
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
 
     // Initialize background music
-    gameMusic = new sound("music/background-music.mp3");
+    gameMusic = new sound("/music/background-music.mp3");
     gameMusic.setVolume(0.3); // Set background music volume to 30%
     gameMusic.sound.loop = true; // Enable looping for background music
     
@@ -1022,8 +1023,8 @@ function animate() {
                 if (!landedLilypad) {
                     gameOver();
                 } else {
-                    // If we're about to hit score 50 or 101, make the lilypad stationary
-                    if (score === 49 || score === 100) {
+                    // If we're about to hit score 50, 101, or 150, make the lilypad stationary
+                    if (score === 49 || score === 100 || score === 149) {
                         landedLilypad.isStationary = true;
                         landedLilypad.speed = 0;
                     }
@@ -1031,7 +1032,7 @@ function animate() {
                     score++;
                     updateScore();
                     
-                    if (score === 50 || score === 101) {
+                    if (score === 50 || score === 101 || score === 150) {
                         // Store current lilypads to avoid modification during iteration
                         const currentLilypads = [...lilypads];
                         const oldCurrentLilypad = currentLilypad;
@@ -1072,7 +1073,7 @@ function animate() {
                                 !lilypads.includes(object) && 
                                 object !== scene && 
                                 !object.isLight && 
-                                (score === 101 || !scene.userData.clouds.includes(object)) && 
+                                (score === 101 || score === 150 || !scene.userData.clouds.includes(object)) && 
                                 !lilypads.some(pad => pad.children.includes(object))) {
                                 objectsToRemove.push(object);
                             }
@@ -1167,14 +1168,14 @@ function animate() {
 function createForestSection(startZ, endZ) {
     const waterWidth = 100;
     const isSnowBiome = score >= 50 && score <= 100;
-    const isDesertBiome = score > 100;
+    const isDesertBiome = score > 100 && score < 150;
+    const isSpaceBiome = score >= 150;
     const groundY = -1.98;  // Ground level y-position
-    const screenWidth = 400;  // Total width of visible area
     
     // Create main ground on both sides
     const groundGeometry = new THREE.PlaneGeometry(waterWidth/2, endZ - startZ);
     const groundMaterial = new THREE.MeshPhongMaterial({
-        color: isDesertBiome ? 0xd2b48c : (isSnowBiome ? 0xffffff : 0x2d5a27),  // Sand color for desert
+        color: isSpaceBiome ? 0x4B0082 : (isDesertBiome ? 0xd2b48c : (isSnowBiome ? 0xffffff : 0x2d5a27)),
         side: THREE.DoubleSide
     });
     
@@ -1190,74 +1191,151 @@ function createForestSection(startZ, endZ) {
     scene.add(leftGround);
     scene.add(rightGround);
 
-    // Add large hills/dunes in background
-    const hillColors = isDesertBiome ? [
-        0xd2b48c,  // Tan
-        0xdeb887,  // BurlyWood
-        0xf4a460   // Sandy Brown
-    ] : (isSnowBiome ? [
-        0xffffff,  // Pure white
-        0xf0f0f0,  // Slightly darker white
-        0xe8e8e8   // Light grey white
-    ] : [
-        0x2d5a27,  // Dark forest green
-        0x3d7a37,  // Medium forest green
-        0x4a8f40,  // Bright forest green
-    ]);
-
-    // Function to create a row of large hills
-    function createHillRow(baseX, z, isLeftSide) {
-        const hillCount = 2;  // Fewer, larger hills per row
-        const baseScale = 2.5;  // Consistent hill size
-        
-        for (let i = 0; i < hillCount; i++) {
-            const scale = baseScale * (0.9 + Math.random() * 0.3);
-            const xOffset = (Math.random() - 0.5) * 30;
-            const zOffset = (Math.random() - 0.5) * 40;
-            
-            const x = isLeftSide ? 
-                -(waterWidth * 1.5) + xOffset :
-                (waterWidth * 1.5) + xOffset;
-            
-            const hill = createHill(
-                x,
-                z + zOffset,
-                scale,
-                12 + Math.floor(Math.random() * 4),
-                35,
-                isSnowBiome,
-                hillColors
-            );
-            hill.position.y = groundY;
-            scene.add(hill);
-        }
-    }
-
-    if (!isDesertBiome) {
-        // Add hills along the section length for forest and snow biomes
+    // Add hills for forest and snow biomes
+    if (!isDesertBiome && !isSpaceBiome) {
         const hillSpacing = 120;
         const numHillRows = Math.ceil((endZ - startZ) / hillSpacing);
         
+        const hillColors = isSnowBiome ? [
+            0xffffff,  // Pure white
+            0xf0f0f0,  // Slightly darker white
+            0xe8e8e8   // Light grey white
+        ] : [
+            0x2d5a27,  // Dark forest green
+            0x3d7a37,  // Medium forest green
+            0x4a8f40   // Bright forest green
+        ];
+        
         for (let i = 0; i < numHillRows; i++) {
             const z = startZ + (i * hillSpacing);
-            createHillRow(0, z, true);   // Left side
-            createHillRow(0, z, false);  // Right side
+            createHillRow(0, z, true, isSnowBiome, hillColors);   // Left side
+            createHillRow(0, z, false, isSnowBiome, hillColors);  // Right side
         }
-    } else {
-        // Add pyramids for desert biome
-        const pyramidSpacing = 80;  // Closer spacing between pyramids
+    }
+
+    if (isSpaceBiome) {
+        // Change sky color to dark space
+        scene.background = new THREE.Color(0x000033);
+
+        // Remove clouds in space biome
+        scene.userData.clouds.forEach(cloud => {
+            cloud.visible = false;
+        });
+
+        // Replace sun with moon
+        scene.children.forEach(child => {
+            if (child.isSun) {
+                scene.remove(child);
+                const moon = createMoon();
+                scene.add(moon);
+            }
+        });
+
+        // Add stars
+        const numStars = 100;  // Number of stars to add
+        const starField = new THREE.Group();
+        
+        for (let i = 0; i < numStars; i++) {
+            const x = (Math.random() - 0.5) * 300;  // Wider spread for stars
+            const y = 20 + Math.random() * 60;      // Height variation
+            const z = startZ + Math.random() * (endZ - startZ);  // Along section length
+            const scale = 0.5 + Math.random() * 1;  // Random star sizes
+            
+            const star = createStar(x, y, z, scale);
+            // Random rotation for variety
+            star.rotation.y = Math.random() * Math.PI * 2;
+            starField.add(star);
+        }
+        
+        scene.add(starField);
+
+        // Add space objects
+        const spaceObjectSpacing = 100;
+        const numSpaceRows = Math.ceil((endZ - startZ) / spaceObjectSpacing);
+        
+        for (let i = 0; i < numSpaceRows; i++) {
+            const z = startZ + (i * spaceObjectSpacing);
+            const objectsPerSide = 2 + Math.floor(Math.random() * 2);
+            
+            // Left side objects
+            for (let j = 0; j < objectsPerSide; j++) {
+                const xOffset = (Math.random() - 0.5) * 40;
+                const zOffset = (Math.random() - 0.5) * 40;
+                const scale = 0.8 + Math.random() * 0.4;
+                
+                const objectType = Math.random();
+                let spaceObject;
+                
+                if (objectType < 0.4) {
+                    spaceObject = createAlien(
+                        -(waterWidth * (1.2 + j * 0.3)) + xOffset,
+                        z + zOffset,
+                        scale
+                    );
+                } else if (objectType < 0.7) {
+                    spaceObject = createSpaceship(
+                        -(waterWidth * (1.2 + j * 0.3)) + xOffset,
+                        z + zOffset,
+                        scale
+                    );
+                } else {
+                    spaceObject = createAlienHouse(
+                        -(waterWidth * (1.2 + j * 0.3)) + xOffset,
+                        z + zOffset,
+                        scale
+                    );
+                }
+                
+                spaceObject.position.y = groundY;
+                scene.add(spaceObject);
+            }
+            
+            // Right side objects
+            for (let j = 0; j < objectsPerSide; j++) {
+                const xOffset = (Math.random() - 0.5) * 40;
+                const zOffset = (Math.random() - 0.5) * 40;
+                const scale = 0.8 + Math.random() * 0.4;
+                
+                const objectType = Math.random();
+                let spaceObject;
+                
+                if (objectType < 0.4) {
+                    spaceObject = createAlien(
+                        (waterWidth * (1.2 + j * 0.3)) + xOffset,
+                        z + zOffset,
+                        scale
+                    );
+                } else if (objectType < 0.7) {
+                    spaceObject = createSpaceship(
+                        (waterWidth * (1.2 + j * 0.3)) + xOffset,
+                        z + zOffset,
+                        scale
+                    );
+                } else {
+                    spaceObject = createAlienHouse(
+                        (waterWidth * (1.2 + j * 0.3)) + xOffset,
+                        z + zOffset,
+                        scale
+                    );
+                }
+                
+                spaceObject.position.y = groundY;
+                scene.add(spaceObject);
+            }
+        }
+    } else if (isDesertBiome) {
+        // Add pyramids
+        const pyramidSpacing = 80;
         const numPyramidRows = Math.ceil((endZ - startZ) / pyramidSpacing);
         
         for (let i = 0; i < numPyramidRows; i++) {
             const z = startZ + (i * pyramidSpacing);
-            
-            // Add multiple pyramids on each side with varying scales
-            const pyramidsPerSide = 2 + Math.floor(Math.random() * 2); // 2-3 pyramids per side
+            const pyramidsPerSide = 2 + Math.floor(Math.random() * 2);
             
             // Left side pyramids
             for (let j = 0; j < pyramidsPerSide; j++) {
-                const scale = 1.5 + Math.random() * 1.0; // Larger scale variation
-                const xOffset = (Math.random() - 0.5) * 40; // Wider x variation
+                const scale = 1.5 + Math.random() * 1.0;
+                const xOffset = (Math.random() - 0.5) * 40;
                 const zOffset = (Math.random() - 0.5) * 40;
                 
                 const pyramid = createSandDune(
@@ -1284,9 +1362,9 @@ function createForestSection(startZ, endZ) {
                 scene.add(pyramid);
             }
             
-            // Add camels near pyramids with higher frequency
-            if (Math.random() < 0.8) {  // 80% chance for camels
-                const numCamels = 1 + Math.floor(Math.random() * 2); // 1-2 camels per side
+            // Add camels
+            if (Math.random() < 0.8) {
+                const numCamels = 1 + Math.floor(Math.random() * 2);
                 
                 // Left side camels
                 for (let k = 0; k < numCamels; k++) {
@@ -1313,85 +1391,49 @@ function createForestSection(startZ, endZ) {
                 }
             }
         }
-    }
-
-    // Add biome-specific features
-    if (isDesertBiome) {
-        // Add more cacti with increased frequency
-        const cactiPerSide = 40;  // More cacti
-        const spacing = (endZ - startZ) / cactiPerSide;
-        const groundWidth = waterWidth/2;
-
+        
+        // Add cacti
+        const cactiPerSide = 40;
+        const cactiSpacing = (endZ - startZ) / cactiPerSide;
+        
         for (let i = 0; i < cactiPerSide; i++) {
-            const z = startZ + (i * spacing) + (Math.random() * spacing * 0.5);
-            const scale = 0.8 + Math.random() * 0.8;
-
-            if (Math.random() < 0.7) {  // Increased chance for cactus (70%)
-                // Add multiple cacti at each position
-                const cactiAtPosition = 1 + Math.floor(Math.random() * 2); // 1-2 cacti
-                
-                // Left side cacti
-                for (let j = 0; j < cactiAtPosition; j++) {
-                    const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                    const leftCactus = createCactus(leftX, z + (Math.random() * spacing * 0.3), scale);
-                    leftCactus.position.y = groundY;
-                    scene.add(leftCactus);
-                }
-
-                // Right side cacti
-                for (let j = 0; j < cactiAtPosition; j++) {
-                    const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                    const rightCactus = createCactus(rightX, z + (Math.random() * spacing * 0.3), scale);
-                    rightCactus.position.y = groundY;
-                    scene.add(rightCactus);
-                }
-            }
-        }
-
-        // Remove clouds in desert biome
-        scene.userData.clouds.forEach(cloud => {
-            cloud.visible = false;
-        });
-
-        // Update sun
-        scene.children.forEach(child => {
-            if (child.isSun) {
-                scene.remove(child);
-                const desertSun = createDesertSun();
-                scene.add(desertSun);
-            }
-        });
-    } else if (!isSnowBiome) {
-        // Original forest code for normal biome
-        const sectionLength = endZ - startZ;
-        const treesPerSide = 75;
-        const spacing = sectionLength / treesPerSide;
-        const groundWidth = waterWidth/2;
-
-        for (let i = 0; i < treesPerSide; i++) {
-            const z = startZ + (i * spacing) + (Math.random() * spacing * 0.5);
-            const scale = 0.8 + Math.random() * 0.8;
-
-            const treesAtPosition = 2 + Math.floor(Math.random() * 2);
+            const z = startZ + (i * cactiSpacing) + (Math.random() * cactiSpacing * 0.5);
+            const scale = 0.8 + Math.random() * 0.4;
             
-            for (let j = 0; j < treesAtPosition; j++) {
-                const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const leftTree = createVariedTree(leftX, z + (Math.random() * spacing * 0.3), scale);
-                leftTree.position.y = groundY;
-                scene.add(leftTree);
+            if (Math.random() < 0.7) {
+                // Left side cactus
+                const leftX = -(waterWidth * 0.75) + (Math.random() * 30 - 15);
+                const cactus = createCactus(leftX, z, scale);
+                cactus.position.y = groundY;
+                scene.add(cactus);
+                
+                if (Math.random() < 0.4) {
+                    const nearbyX = leftX + (Math.random() * 10 - 5);
+                    const nearbyCactus = createCactus(nearbyX, z + (Math.random() * 10 - 5), scale * 0.8);
+                    nearbyCactus.position.y = groundY;
+                    scene.add(nearbyCactus);
+                }
             }
-
-            for (let j = 0; j < treesAtPosition; j++) {
-                const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const rightTree = createVariedTree(rightX, z + (Math.random() * spacing * 0.3), scale);
-                rightTree.position.y = groundY;
-                scene.add(rightTree);
+            
+            if (Math.random() < 0.7) {
+                // Right side cactus
+                const rightX = (waterWidth * 0.75) + (Math.random() * 30 - 15);
+                const cactus = createCactus(rightX, z, scale);
+                cactus.position.y = groundY;
+                scene.add(cactus);
+                
+                if (Math.random() < 0.4) {
+                    const nearbyX = rightX + (Math.random() * 10 - 5);
+                    const nearbyCactus = createCactus(nearbyX, z + (Math.random() * 10 - 5), scale * 0.8);
+                    nearbyCactus.position.y = groundY;
+                    scene.add(nearbyCactus);
+                }
             }
         }
     } else {
-        // Existing snow biome code
+        // Add trees for forest and snow biomes
         const sectionLength = endZ - startZ;
-        const treesPerSide = 50;
+        const treesPerSide = isSnowBiome ? 50 : 75;
         const spacing = sectionLength / treesPerSide;
         const groundWidth = waterWidth/2;
 
@@ -1399,34 +1441,52 @@ function createForestSection(startZ, endZ) {
             const z = startZ + (i * spacing) + (Math.random() * spacing * 0.5);
             const scale = 0.8 + Math.random() * 0.8;
 
-            if (Math.random() < 0.7) {
-                const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const leftTree = createSnowyTree(leftX, z, scale);
-                leftTree.position.y = groundY;
-                scene.add(leftTree);
-            }
-            
-            if (Math.random() < 0.05) {
-                const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const leftIgloo = createIgloo(leftX, z, 1.2);
-                leftIgloo.position.y = groundY;
-                leftIgloo.rotation.y = Math.random() * Math.PI * 2;
-                scene.add(leftIgloo);
-            }
+            if (isSnowBiome) {
+                if (Math.random() < 0.7) {
+                    const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const leftTree = createSnowyTree(leftX, z, scale);
+                    leftTree.position.y = groundY;
+                    scene.add(leftTree);
+                }
+                
+                if (Math.random() < 0.05) {
+                    const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const leftIgloo = createIgloo(leftX, z, 1.2);
+                    leftIgloo.position.y = groundY;
+                    leftIgloo.rotation.y = Math.random() * Math.PI * 2;
+                    scene.add(leftIgloo);
+                }
 
-            if (Math.random() < 0.7) {
-                const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const rightTree = createSnowyTree(rightX, z, scale);
-                rightTree.position.y = groundY;
-                scene.add(rightTree);
-            }
-            
-            if (Math.random() < 0.05) {
-                const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
-                const rightIgloo = createIgloo(rightX, z, 1.2);
-                rightIgloo.position.y = groundY;
-                rightIgloo.rotation.y = Math.random() * Math.PI * 2;
-                scene.add(rightIgloo);
+                if (Math.random() < 0.7) {
+                    const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const rightTree = createSnowyTree(rightX, z, scale);
+                    rightTree.position.y = groundY;
+                    scene.add(rightTree);
+                }
+                
+                if (Math.random() < 0.05) {
+                    const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const rightIgloo = createIgloo(rightX, z, 1.2);
+                    rightIgloo.position.y = groundY;
+                    rightIgloo.rotation.y = Math.random() * Math.PI * 2;
+                    scene.add(rightIgloo);
+                }
+            } else {
+                const treesAtPosition = 2 + Math.floor(Math.random() * 2);
+                
+                for (let j = 0; j < treesAtPosition; j++) {
+                    const leftX = -(waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const leftTree = createVariedTree(leftX, z + (Math.random() * spacing * 0.3), scale);
+                    leftTree.position.y = groundY;
+                    scene.add(leftTree);
+                }
+
+                for (let j = 0; j < treesAtPosition; j++) {
+                    const rightX = (waterWidth * 0.75) + (Math.random() * (groundWidth * 0.9) - groundWidth * 0.45);
+                    const rightTree = createVariedTree(rightX, z + (Math.random() * spacing * 0.3), scale);
+                    rightTree.position.y = groundY;
+                    scene.add(rightTree);
+                }
             }
         }
     }
@@ -2072,6 +2132,291 @@ function createWater() {
     waterMesh.rotation.x = -Math.PI / 2;
     waterMesh.position.set(0, -2, 200);
     return waterMesh;
+}
+
+// Create an alien
+function createAlien(x, z, scale = 1) {
+    const alienGroup = new THREE.Group();
+    
+    // Materials
+    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x00FF00,  // Bright green for alien
+        flatShading: true,
+        emissive: 0x00FF00,
+        emissiveIntensity: 0.2
+    });
+    const eyeMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x000000,  // Black eyes
+        flatShading: true 
+    });
+
+    // Body
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(scale * 1.5, scale * 2.5, scale),
+        bodyMaterial
+    );
+    alienGroup.add(body);
+
+    // Large head
+    const head = new THREE.Mesh(
+        new THREE.BoxGeometry(scale * 2, scale * 1.5, scale * 1.5),
+        bodyMaterial
+    );
+    head.position.y = scale * 2;
+    alienGroup.add(head);
+
+    // Large eyes
+    const eyeSize = scale * 0.5;
+    [-0.5, 0.5].forEach(x => {
+        const eye = new THREE.Mesh(
+            new THREE.BoxGeometry(eyeSize, eyeSize * 1.5, eyeSize * 0.1),
+            eyeMaterial
+        );
+        eye.position.set(x * scale, scale * 2, scale * 0.75);
+        alienGroup.add(eye);
+    });
+
+    // Thin arms
+    [-0.8, 0.8].forEach(x => {
+        const arm = new THREE.Mesh(
+            new THREE.BoxGeometry(scale * 0.4, scale * 1.5, scale * 0.4),
+            bodyMaterial
+        );
+        arm.position.set(x * scale, scale * 0.5, 0);
+        alienGroup.add(arm);
+    });
+
+    alienGroup.position.set(x, 0, z);
+    return alienGroup;
+}
+
+// Create a spaceship
+function createSpaceship(x, z, scale = 1) {
+    const shipGroup = new THREE.Group();
+    
+    // Materials
+    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x808080,  // Metallic gray
+        flatShading: true,
+        emissive: 0x404040,
+        emissiveIntensity: 0.2
+    });
+    const glowMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x00FFFF,  // Cyan glow
+        flatShading: true,
+        emissive: 0x00FFFF,
+        emissiveIntensity: 0.5
+    });
+
+    // Main saucer body
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(scale * 6, scale, scale * 6),
+        bodyMaterial
+    );
+    shipGroup.add(body);
+
+    // Top dome
+    const dome = new THREE.Mesh(
+        new THREE.BoxGeometry(scale * 3, scale * 2, scale * 3),
+        bodyMaterial
+    );
+    dome.position.y = scale * 1.5;
+    shipGroup.add(dome);
+
+    // Glow lights around the edge
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const light = new THREE.Mesh(
+            new THREE.BoxGeometry(scale * 0.5, scale * 0.5, scale * 0.5),
+            glowMaterial
+        );
+        light.position.set(
+            Math.cos(angle) * scale * 3,
+            0,
+            Math.sin(angle) * scale * 3
+        );
+        shipGroup.add(light);
+    }
+
+    shipGroup.position.set(x, scale * 10, z);  // Hover higher in the air
+    return shipGroup;
+}
+
+// Create an alien house (like a dome structure)
+function createAlienHouse(x, z, scale = 1) {
+    const houseGroup = new THREE.Group();
+    
+    // Materials
+    const domeMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x4B0082,  // Deep purple
+        flatShading: true,
+        emissive: 0x4B0082,
+        emissiveIntensity: 0.2
+    });
+    const windowMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x00FFFF,  // Cyan windows
+        flatShading: true,
+        emissive: 0x00FFFF,
+        emissiveIntensity: 0.5
+    });
+
+    // Base
+    const base = new THREE.Mesh(
+        new THREE.BoxGeometry(scale * 6, scale * 0.5, scale * 6),
+        domeMaterial
+    );
+    houseGroup.add(base);
+
+    // Dome structure (made of stacked boxes)
+    const layers = 6;
+    for (let i = 0; i < layers; i++) {
+        const size = scale * (6 - i);
+        const layer = new THREE.Mesh(
+            new THREE.BoxGeometry(size, scale, size),
+            domeMaterial
+        );
+        layer.position.y = scale * (i * 0.8 + 0.5);
+        houseGroup.add(layer);
+    }
+
+    // Windows
+    const windowPositions = [
+        {x: 1, z: 0}, {x: -1, z: 0},
+        {x: 0, z: 1}, {x: 0, z: -1}
+    ];
+
+    windowPositions.forEach(pos => {
+        const window = new THREE.Mesh(
+            new THREE.BoxGeometry(scale, scale, scale * 0.1),
+            windowMaterial
+        );
+        window.position.set(
+            pos.x * scale * 2,
+            scale * 2,
+            pos.z * scale * 2
+        );
+        if (pos.x === 0) window.rotation.y = Math.PI / 2;
+        houseGroup.add(window);
+    });
+
+    houseGroup.position.set(x, 0, z);
+    return houseGroup;
+}
+
+// Create a moon (replaces sun in space biome)
+function createMoon() {
+    const moonGroup = new THREE.Group();
+    moonGroup.isSun = true;  // Keep this for compatibility
+    
+    const moonMaterial = new THREE.MeshPhongMaterial({
+        color: 0xE6E6E6,  // Light gray
+        flatShading: true,
+        emissive: 0xE6E6E6,
+        emissiveIntensity: 0.3
+    });
+
+    // Main moon body (larger central cube)
+    const moonCore = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 10, 10),
+        moonMaterial
+    );
+    moonGroup.add(moonCore);
+
+    // Add craters (smaller darker boxes)
+    const craterMaterial = new THREE.MeshPhongMaterial({
+        color: 0xA9A9A9,  // Darker gray
+        flatShading: true
+    });
+
+    // Add several craters at random positions
+    for (let i = 0; i < 6; i++) {
+        const craterSize = 1 + Math.random();
+        const crater = new THREE.Mesh(
+            new THREE.BoxGeometry(craterSize, craterSize, craterSize),
+            craterMaterial
+        );
+        
+        // Position craters on the visible face of the moon
+        crater.position.set(
+            (Math.random() - 0.5) * 6,
+            (Math.random() - 0.5) * 6,
+            4
+        );
+        moonGroup.add(crater);
+    }
+
+    moonGroup.position.set(0, 40, 200);
+    return moonGroup;
+}
+
+// Function to create a row of hills (updated to handle both snow and forest biomes)
+function createHillRow(baseX, z, isLeftSide, isSnowBiome, hillColors) {
+    const hillCount = 2;
+    const baseScale = 2.5;
+    
+    for (let i = 0; i < hillCount; i++) {
+        const scale = baseScale * (0.9 + Math.random() * 0.3);
+        const xOffset = (Math.random() - 0.5) * 30;
+        const zOffset = (Math.random() - 0.5) * 40;
+        
+        const x = isLeftSide ? 
+            -(100 * 1.5) + xOffset :
+            (100 * 1.5) + xOffset;
+        
+        const hill = createHill(
+            x,
+            z + zOffset,
+            scale,
+            12 + Math.floor(Math.random() * 4),
+            35,
+            isSnowBiome,
+            hillColors
+        );
+        hill.position.y = -1.98;
+        scene.add(hill);
+    }
+}
+
+// Create a star for space biome
+function createStar(x, y, z, scale = 1) {
+    const starGroup = new THREE.Group();
+    
+    // Star material with glow effect
+    const starMaterial = new THREE.MeshPhongMaterial({
+        color: 0xFFFFFF,
+        flatShading: true,
+        emissive: 0xFFFFFF,
+        emissiveIntensity: 0.8
+    });
+
+    // Create main star cube
+    const core = new THREE.Mesh(
+        new THREE.BoxGeometry(scale, scale, scale),
+        starMaterial
+    );
+    starGroup.add(core);
+
+    // Add smaller cubes around the core for sparkle effect
+    const sparklePositions = [
+        { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 },
+        { x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 }
+    ];
+
+    sparklePositions.forEach(pos => {
+        const sparkle = new THREE.Mesh(
+            new THREE.BoxGeometry(scale * 0.3, scale * 0.3, scale * 0.3),
+            starMaterial
+        );
+        sparkle.position.set(
+            pos.x * scale * 0.5,
+            pos.y * scale * 0.5,
+            pos.z * scale * 0.5
+        );
+        starGroup.add(sparkle);
+    });
+
+    starGroup.position.set(x, y, z);
+    return starGroup;
 }
 
 // Start the game
