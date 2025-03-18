@@ -802,7 +802,7 @@ function restartGame() {
     lights.forEach(light => scene.add(light));
 
     // Reset game state
-    score = 149;
+    score = 0;  // Reset score to 0 instead of 149
     isGameOver = false;
     isJumping = false;
     jumpForce = 0;
