@@ -1,6 +1,6 @@
 // Game state
 let scene, camera, renderer, frog, lilypads = [];
-let score = 149;
+let score = 0;
 let highScore = localStorage.getItem('highScore') || 0;
 let isGameOver = false;
 let isJumping = false;
