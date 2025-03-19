@@ -969,6 +969,10 @@ function init() {
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
     window.addEventListener('resize', onWindowResize, false);
+    
+    // Add touch event listeners
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     // Create initial forest section
     createForestSection(-50, 450);
@@ -995,6 +999,22 @@ function animate() {
     }
 
     if (!isGameOver) {
+        // Update water position
+        if (water) {
+            // Check if player has moved far enough to warrant repositioning the water
+            const distanceFromLastReposition = Math.abs(frog.position.z - water.lastRepositionZ);
+            if (distanceFromLastReposition > 1000) { // Half the water length
+                // Reposition water ahead of the player
+                water.position.z = frog.position.z + 1000; // Position it 1000 units ahead
+                water.lastRepositionZ = frog.position.z;
+                
+                // Update texture offset to maintain visual continuity
+                if (water.material.map) {
+                    water.material.map.offset.y = -(water.position.z / 2000);
+                }
+            }
+        }
+
         // Move lilypads left and right
         lilypads.forEach(lilypad => {
             if (!lilypad.isStationary) {
@@ -2119,7 +2139,7 @@ function createWaterTexture() {
 
 // Create water mesh
 function createWater() {
-    const waterGeometry = new THREE.PlaneGeometry(100, 1000);
+    const waterGeometry = new THREE.PlaneGeometry(100, 2000); // Double the length for smoother transitions
     const waterMaterial = new THREE.MeshPhongMaterial({
         color: 0x1e6ea3,
         transparent: true,
@@ -2131,6 +2151,9 @@ function createWater() {
     const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
     waterMesh.rotation.x = -Math.PI / 2;
     waterMesh.position.set(0, -2, 200);
+    
+    // Add a property to track when to reposition the water
+    waterMesh.lastRepositionZ = 200;
     return waterMesh;
 }
 
@@ -2417,6 +2440,63 @@ function createStar(x, y, z, scale = 1) {
 
     starGroup.position.set(x, y, z);
     return starGroup;
+}
+
+// Handle touch input
+function handleTouchStart(event) {
+    if (isGameOver) return;
+    
+    // Prevent default to avoid scrolling
+    event.preventDefault();
+    
+    // Get touch coordinates
+    const touch = event.touches[0];
+    const touchX = touch.clientX;
+    const screenWidth = window.innerWidth;
+    
+    if (!isJumping) {
+        // Start background music on first jump if not already playing
+        if (!gameMusic.sound.playing) {
+            gameMusic.play();
+        }
+        isJumping = true;
+        jumpForce = JUMP_POWER;
+        // Move frog forward when jumping
+        frog.position.z += 5;
+        cameraTargetZ = frog.position.z - 10;
+        
+        // Resume movement of the previous lilypad
+        if (currentLilypad && !currentLilypad.isStationary) {
+            currentLilypad.speed = currentLilypad.originalSpeed;
+        }
+        currentLilypad = null;
+        frogOffsetX = 0;
+    }
+}
+
+function handleTouchMove(event) {
+    if (isGameOver || isJumping) return;
+    
+    // Prevent default to avoid scrolling
+    event.preventDefault();
+    
+    // Get touch coordinates
+    const touch = event.touches[0];
+    const touchX = touch.clientX;
+    const screenWidth = window.innerWidth;
+    
+    // Move left if touch is on left side, right if on right side
+    if (touchX < screenWidth / 2) {
+        frog.position.x += 0.1; // Move left
+        if (currentLilypad) {
+            frogOffsetX = frog.position.x - currentLilypad.position.x;
+        }
+    } else {
+        frog.position.x -= 0.1; // Move right
+        if (currentLilypad) {
+            frogOffsetX = frog.position.x - currentLilypad.position.x;
+        }
+    }
 }
 
 // Start the game
